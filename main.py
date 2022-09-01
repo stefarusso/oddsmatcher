@@ -1,2 +1,4 @@
 #!/opt/miniconda3/bin/python
-print("hello")
+import requests
+from playwright.sync_api import sync_playwright
+
