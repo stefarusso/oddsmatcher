@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 import pandas as pd
 pd.set_option('display.max_columns', None) #FOR DEBUG
-
+pd.set_option('display.max_row', None) #FOR DEBUG
 def get_cookie_playwright():
 	with sync_playwright() as p:
 		#browser = p.chromium.launch(headless=None, slow_mo=50)   #for debugging
@@ -40,10 +40,12 @@ def open_json_file(filename):
 		json_data = json.load(json_file)
 	return json_data
 
-def download_json(url,headers,querystring,filename="dati.json",payload=""):
+def download_json(url,headers,querystring,filename="dati.json",payload="",save=False):
 	response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
-	save_json_file(filename, response)
-
+	json_object=json.loads(response.text)
+	if save:
+		save_json_file(filename, response)
+	return json_object
 def list_to_dataframe(list,col_names=['league','home_team','away_team','date','selection','odd']):
 	list=dict(zip(col_names,list))
 	list=pd.DataFrame([list])
@@ -132,13 +134,19 @@ def odds_UO25(json_object):
 	out = pd.concat([over, under], ignore_index=True)
 	return out
 
+def extract_odds(competitionid,market,f,save=False):
+	querystring = {"competitionId": str(competitionid), "marketTypes": market, "locale": "it-it"}
+	data=download_json(url,headers,querystring,"dati.json",save)
+	dataset=loop_league(data,f)
+	return dataset
+
 
 url_cookie='https://www.pokerstars.it/sports/#/soccer/competitions' #URL for cookie assigment
 cookie = get_cookie_playwright_pokerstar(url_cookie) #URL generic for the cookie
 url = "https://sports.pokerstars.it/sportsbook/v1/api/getSportTree" #URL for the json
 querystring = {"sport":"SOCCER","locale":"it-it"}
 headers = {"Cookie": cookie}
-download_json(url,headers,querystring,"event_tree.json")  #Competition Tree
+download_json(url,headers,querystring,"event_tree.json",save=True)  #Competition Tree
 
 
 #EVENT TREE INITIALIZATION
@@ -151,7 +159,7 @@ for comp in comp_tree_data['popularCompetitions']:
 	comp_id.append(comp["id"])
 	comp_name.append(comp["name"])
 
-print(dict(zip(comp_name,comp_id)))
+#print(dict(zip(comp_name,comp_id)))
 
 '''#ALL COMPETITTIONA
 comp_id=[]
@@ -165,34 +173,33 @@ n_comp = 70
 print(dict(zip(comp_name[0:n_comp],comp_id[0:n_comp])))'''
 
 
-#1° COMPETIZIONE
+#1° LEAGUE
 #TEST for ID number 0  <----------------------------------------------------------------
+#for downloading the json we need
+#				-The league ID
+#				-the market identification header <--- Always the same
 id=comp_id[0]
+market={
+	"home_x_away" : "SOCCER:FT:AXB,MRES",
+	"under_over" : "SOCCER:FT:OU,OVUN",
+	"goal_nogoal" : "SOCCER:FT:BTS,BTSC"
+}
+
+
+url = "https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents"
+headers = {"Cookie": cookie}
 
 # FIRST   HOME-DRAW-AWAY ODDS
-url = "https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents"
-querystring = {"competitionId": id,"marketTypes":"SOCCER:FT:AXB,MRES","locale":"it-it"}
-headers = {"Cookie": cookie}
-download_json(url,headers,querystring,"dati.json")
-data_1x2 = open_json_file("dati.json")
-dataset_1x2 = loop_league(data_1x2,odds_1x2)
+dataset_1x2=extract_odds(id,market["home_x_away"],odds_1x2)
 
 #THEN U25 O25
-#different querystring
-querystring = {"competitionId":"15414240","marketTypes":"SOCCER:FT:OU,OVUN","locale":"it-it"}
-download_json(url,headers,querystring,"dati.json") #overide the same file
-data_uo=open_json_file("dati.json")
-dataset_uo = loop_league(data_uo,odds_UO25)
+dataset_uo=extract_odds(id,market["under_over"],odds_UO25)
 
 #THEN GOALNOGOAL
-#different querystring
-querystring = {"competitionId":"15414240","marketTypes":"SOCCER:FT:BTS,BTSC","locale":"it-it"}
-download_json(url,headers,querystring,"dati.json") #overide the same file
-data_goal=open_json_file("dati.json")
-dataset_goal=loop_league(data_goal,odds_goal)
+dataset_goal=extract_odds(id,market["goal_nogoal"],odds_goal)
 
 
-#print(pd.concat([dataset_1x2,dataset_uo,dataset_goal], ignore_index=True))
+print(pd.concat([dataset_1x2,dataset_uo,dataset_goal], ignore_index=True))
 
 
 
