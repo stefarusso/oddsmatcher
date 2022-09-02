@@ -7,17 +7,6 @@ from datetime import datetime
 import pandas as pd
 pd.set_option('display.max_columns', None) #FOR DEBUG
 
-
-#with sync_playwright() as p:
-#    browser = p.chromium.launch()
-#    context = browser.new_context()
-#    page = context.new_page()
-#    page.goto("https://www.forbes.com/billionaires")
-#    page.click("button.trustarc-agree-btn")
-#    # print(context.cookies())
-#    cookie_for_requests = context.cookies()[3]['value']
-#    browser.close()
-
 def get_cookie_playwright():
 	with sync_playwright() as p:
 		#browser = p.chromium.launch(headless=None, slow_mo=50)   #for debugging
@@ -51,56 +40,105 @@ def open_json_file(filename):
 		json_data = json.load(json_file)
 	return json_data
 
-def download_json(url,headers,querystring,payload="",filename="dati.json"):
+def download_json(url,headers,querystring,filename="dati.json",payload=""):
 	response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
 	save_json_file(filename, response)
 
-def list_to_dataframe(list,col_names):
+def list_to_dataframe(list,col_names=['league','home_team','away_team','date','selection','odd']):
 	list=dict(zip(col_names,list))
 	list=pd.DataFrame([list])
 	return list
-def odds_1x2(json_object):
+
+def init_data():
+	col_names = ['league', 'home_team', 'away_team', 'date', 'selection', 'odd']
+	data = pd.DataFrame(columns=col_names)  # DATAFRAME FOR 1x2
+	return data
+
+def t_timestamp(t):
+	t = t / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
+	t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
+	return t
+
+def team_league_date(json_object):
 	for team in json_object['participants']['participant']:
 		if team['type']=="AWAY":
 			away_team = team['name']
 		elif team['type']=="HOME":
 			home_team = team['name']
-	t = json_object['eventTime'] / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
-	t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
+	league=json_object['compName']
+	t = t_timestamp(json_object['eventTime'])
+	return home_team,away_team,league,t
+
+def loop_league(json_object,f):
+	dataset=init_data()
+	for event in json_object['event']:
+		dataset = pd.concat([dataset,f(event)], ignore_index=True)
+	return dataset
+
+def odds_goal(json_object):
+	home_team,away_team,league,t = team_league_date(json_object)
+	for market in json_object['markets']:
+		for selection in market['selection']:
+				if selection['type']=='No':
+					selection_no="NOGOAL"
+					odd_no = selection['odds']['dec']
+				elif selection['type']=='Yes':
+					selection_goal = "GOAL"
+					odd_goal = selection['odds']['dec']
+	goal = [league, home_team, away_team, t, selection_goal, odd_goal]
+	goal = list_to_dataframe(goal)
+	nogoal = [league, home_team, away_team, t, selection_no, odd_no]
+	nogoal = list_to_dataframe(nogoal)
+	out = pd.concat([goal, nogoal], ignore_index=True)
+	return out
+
+def odds_1x2(json_object):
+	home_team, away_team, league, t = team_league_date(json_object)
 	for market in json_object['markets'][0]['selection']:
 		if market['type']=='A':
-			odd_home=market['odds']['dec']
+			selection_1 = market['name']
+			odd_1=market['odds']['dec']
 		elif market['type']=='Draw':
-			odd_draw = market['odds']['dec']
+			selection_x = market['name']
+			odd_x = market['odds']['dec']
 		elif market['type'] == 'B':
-			odd_away = market['odds']['dec']
-	return home_team,away_team,t,odd_home,odd_draw,odd_away
+			selection_2 = market['name']
+			odd_2 = market['odds']['dec']
+	home=[league,home_team,away_team,t,selection_1,odd_1]
+	home=list_to_dataframe(home)
+	draw=[league,home_team,away_team,t,selection_x,odd_x]
+	draw = list_to_dataframe(draw)
+	away=[league,home_team,away_team,t,selection_2,odd_2]
+	away = list_to_dataframe(away)
+	odds=pd.concat([home,draw,away],ignore_index=True)
+	return odds
 
 def odds_UO25(json_object):
-	for team in json_object['participants']['participant']:
-		if team['type']=="AWAY":
-			away_team = team['name']
-		elif team['type']=="HOME":
-			home_team = team['name']
+	home_team,away_team,league,t = team_league_date(json_object)
 	for market in json_object['markets']:
 		if market['line']==2.5:
 			for selection in market['selection']:
 				if selection['type']=='Under':
+					selection_u=selection['name']
 					odd_u = selection['odds']['dec']
 				elif selection['type']=='Over':
+					selection_o = selection['name']
 					odd_o = selection['odds']['dec']
 			break
-	return list_to_dataframe([home_team,away_team,odd_o,odd_u],['home_team','away_team','over25','under25'])
-
+	under = [league, home_team, away_team, t, selection_u, odd_u]
+	under = list_to_dataframe(under)
+	over = [league, home_team, away_team, t, selection_o, odd_o]
+	over = list_to_dataframe(over)
+	out = pd.concat([over, under], ignore_index=True)
+	return out
 
 
 url_cookie='https://www.pokerstars.it/sports/#/soccer/competitions' #URL for cookie assigment
 cookie = get_cookie_playwright_pokerstar(url_cookie) #URL generic for the cookie
 url = "https://sports.pokerstars.it/sportsbook/v1/api/getSportTree" #URL for the json
-querystring = {"sport":"SOCCER","channelId":"3","locale":"it-it"}
-payload = ""
+querystring = {"sport":"SOCCER","locale":"it-it"}
 headers = {"Cookie": cookie}
-#download_json(url,headers,querystring,payload,"event_tree.json")  #Competition Tree
+download_json(url,headers,querystring,"event_tree.json")  #Competition Tree
 
 
 #EVENT TREE INITIALIZATION
@@ -113,7 +151,7 @@ for comp in comp_tree_data['popularCompetitions']:
 	comp_id.append(comp["id"])
 	comp_name.append(comp["name"])
 
-#print(dict(zip(comp_name,comp_id)))
+print(dict(zip(comp_name,comp_id)))
 
 '''#ALL COMPETITTIONA
 comp_id=[]
@@ -133,36 +171,29 @@ id=comp_id[0]
 
 # FIRST   HOME-DRAW-AWAY ODDS
 url = "https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents"
-querystring = {"competitionId": id,"marketTypes":"SOCCER:FT:AXB,MRES","channelId":"3","locale":"it-it"}
-payload = ""
+querystring = {"competitionId": id,"marketTypes":"SOCCER:FT:AXB,MRES","locale":"it-it"}
 headers = {"Cookie": cookie}
-download_json(url,headers,querystring,payload,"dati.json")
-dati_1x2 = open_json_file("dati.json")
-
-col_names=['home_team','away_team','date','home','x','away']
-home_away=pd.DataFrame(columns=col_names) #DATAFRAME FOR 1x2
-
-for event in dati_1x2['event']:
-	new=odds_1x2(event)
-	new=list_to_dataframe(new,col_names)
-	home_away = pd.concat([home_away, new], ignore_index=True)
-
-
+download_json(url,headers,querystring,"dati.json")
+data_1x2 = open_json_file("dati.json")
+dataset_1x2 = loop_league(data_1x2,odds_1x2)
 
 #THEN U25 O25
 #different querystring
-querystring = {"competitionId":"15414240","marketTypes":"SOCCER:FT:OU,OVUN","channelId":"3","locale":"it-it"}
-download_json(url,headers,querystring,payload,"dati.json") #overide the same file
-dati=open_json_file("dati.json")
+querystring = {"competitionId":"15414240","marketTypes":"SOCCER:FT:OU,OVUN","locale":"it-it"}
+download_json(url,headers,querystring,"dati.json") #overide the same file
+data_uo=open_json_file("dati.json")
+dataset_uo = loop_league(data_uo,odds_UO25)
+
+#THEN GOALNOGOAL
+#different querystring
+querystring = {"competitionId":"15414240","marketTypes":"SOCCER:FT:BTS,BTSC","locale":"it-it"}
+download_json(url,headers,querystring,"dati.json") #overide the same file
+data_goal=open_json_file("dati.json")
+dataset_goal=loop_league(data_goal,odds_goal)
+
+
+#print(pd.concat([dataset_1x2,dataset_uo,dataset_goal], ignore_index=True))
 
 
 
 
-col_names=['home_team','away_team','over25','under25']
-u_o_25_dataset=pd.DataFrame(columns=col_names)
-for event in dati['event']:
-	new=odds_UO25(event)
-	u_o_25_dataset = pd.concat([u_o_25_dataset, new], ignore_index=True)
-
-
-print(pd.merge(home_away,u_o_25_dataset, how='outer'))
