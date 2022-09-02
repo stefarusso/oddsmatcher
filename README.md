@@ -1,15 +1,23 @@
 # oddsmatcher
+```
+Requirement
+pip install playwright
+playwright install
+```
+
 Oddsmatcher for betfair/bookers matchbetting
 
 inspect XHR GET Response on the website
-find the usefull json 
-copy as cURL
-paste on Insomnia APP 
-you can send the request and get the same exact json
-from all the headers the only one crucial is the cookie
-so you can un-tick all beside cookie
 
-right click on the file "generate code" export the XHR GET request in python lenguage
+find the usefull json 
+
+copy as cURL
+
+paste on Insomnia APP 
+
+you can send the request and get the same exact json. from all the headers the only one crucial is the cookie so you can un-tick all beside cookie
+
+right click on the file "generate code" export the XHR GET request in python language
 
 ```python
 import requests
@@ -25,15 +33,17 @@ print(response.text)
 ```
 
 the cookie expire so we need a procedure that update the cookie at the start of the program
+
 the script using playwright https://github.com/jhnwr/billionaires-scraper works like a charm so we use it for that task
 
 when we have the json file we can start extracting only the info we need:
--date and time
--name event
--league
--odds
-	-1 X 2
-	-U2.5 =2.5
-	-GOAL NOGOAL
+
+- date and time
+- name event
+- league
+- odds
+	- 1 X 2
+    - U2.5 =2.5 
+    - GOAL NOGOAL
 
 then we iterate the same procedure for all the main leagues
