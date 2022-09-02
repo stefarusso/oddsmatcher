@@ -4,6 +4,9 @@ import requests
 from playwright.sync_api import sync_playwright
 import json
 from datetime import datetime
+import pandas as pd
+pd.set_option('display.max_columns', None) #FOR DEBUG
+
 
 #with sync_playwright() as p:
 #    browser = p.chromium.launch()
@@ -52,15 +55,44 @@ def download_json(url,headers,querystring,payload="",filename="dati.json"):
 	response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
 	save_json_file(filename, response)
 
+def list_to_dataframe(list,col_names):
+	list=dict(zip(col_names,list))
+	list=pd.DataFrame([list])
+	return list
 def odds_1x2(json_object):
-	home_team = json_object['participants']['participant'][1]['name']  # HOME TEAM NAME
-	away_team = json_object['participants']['participant'][0]['name']  # AWAY TEAM NAME
+	for team in json_object['participants']['participant']:
+		if team['type']=="AWAY":
+			away_team = team['name']
+		elif team['type']=="HOME":
+			home_team = team['name']
 	t = json_object['eventTime'] / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
 	t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
-	odd_home = json_object['markets'][0]['selection'][0]['odds']['dec']  # HOME WIN
-	odd_draw = json_object['markets'][0]['selection'][1]['odds']['dec']  # DRAW
-	odd_away = json_object['markets'][0]['selection'][2]['odds']['dec']  # AWAY WIN
-	return [home_team,away_team],[t],[odd_home,odd_draw,odd_away]
+	for market in json_object['markets'][0]['selection']:
+		if market['type']=='A':
+			odd_home=market['odds']['dec']
+		elif market['type']=='Draw':
+			odd_draw = market['odds']['dec']
+		elif market['type'] == 'B':
+			odd_away = market['odds']['dec']
+	return home_team,away_team,t,odd_home,odd_draw,odd_away
+
+def odds_UO25(json_object):
+	for team in json_object['participants']['participant']:
+		if team['type']=="AWAY":
+			away_team = team['name']
+		elif team['type']=="HOME":
+			home_team = team['name']
+	for market in json_object['markets']:
+		if market['line']==2.5:
+			for selection in market['selection']:
+				if selection['type']=='Under':
+					odd_u = selection['odds']['dec']
+				elif selection['type']=='Over':
+					odd_o = selection['odds']['dec']
+			break
+	return list_to_dataframe([home_team,away_team,odd_o,odd_u],['home_team','away_team','over25','under25'])
+
+
 
 url_cookie='https://www.pokerstars.it/sports/#/soccer/competitions' #URL for cookie assigment
 cookie = get_cookie_playwright_pokerstar(url_cookie) #URL generic for the cookie
@@ -104,18 +136,33 @@ url = "https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents"
 querystring = {"competitionId": id,"marketTypes":"SOCCER:FT:AXB,MRES","channelId":"3","locale":"it-it"}
 payload = ""
 headers = {"Cookie": cookie}
-#download_json(url,headers,querystring,payload,"dati.json")
+download_json(url,headers,querystring,payload,"dati.json")
 dati_1x2 = open_json_file("dati.json")
-odds=[]
+
+col_names=['home_team','away_team','date','home','x','away']
+home_away=pd.DataFrame(columns=col_names) #DATAFRAME FOR 1x2
+
 for event in dati_1x2['event']:
-	odds.append(odds_1x2(event))
+	new=odds_1x2(event)
+	new=list_to_dataframe(new,col_names)
+	home_away = pd.concat([home_away, new], ignore_index=True)
+
+
 
 #THEN U25 O25
+#different querystring
+querystring = {"competitionId":"15414240","marketTypes":"SOCCER:FT:OU,OVUN","channelId":"3","locale":"it-it"}
+download_json(url,headers,querystring,payload,"dati.json") #overide the same file
+dati=open_json_file("dati.json")
 
 
-for event in odds:
-	print(f'{event[0][0]:^25} - {event[0][1]:^25} | {event[1][0]:^20} | 1:{event[2][0]:5}  X:{event[2][1]:5}  2:{event[2][2]:5}')
 
 
-#info=odds_1x2(dati['event'][0])
-#print(f'{info[0][0]:^15} - {info[0][1]:^15} | {info[1][0]:^15} | 1:{info[2][0]:3}  X:{info[2][1]:3}  2:{info[2][2]:3}')
+col_names=['home_team','away_team','over25','under25']
+u_o_25_dataset=pd.DataFrame(columns=col_names)
+for event in dati['event']:
+	new=odds_UO25(event)
+	u_o_25_dataset = pd.concat([u_o_25_dataset, new], ignore_index=True)
+
+
+print(pd.merge(home_away,u_o_25_dataset, how='outer'))
