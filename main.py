@@ -6,19 +6,9 @@ import json
 from datetime import datetime
 import pandas as pd
 pd.set_option('display.max_columns', None) #FOR DEBUG
-pd.set_option('display.max_row', None) #FOR DEBUG
-def get_cookie_playwright():
-	with sync_playwright() as p:
-		#browser = p.chromium.launch(headless=None, slow_mo=50)   #for debugging
-		browser = p.chromium.launch()
-		context = browser.new_context()
-		page = context.new_page()
-		page.goto("https://www.eurobet.it/it/scommesse/#!/")
-		cookie_for_requests=context.cookies()
-		browser.close()
-	return cookie_for_requests
+#pd.set_option('display.max_row', None) #FOR DEBUG
 
-def get_cookie_playwright_pokerstar(URL):
+def get_cookie(URL):
 	with sync_playwright() as p:
 		#browser = p.chromium.launch(headless=None, slow_mo=50)   #for debugging
 		browser = p.chromium.launch()
@@ -46,15 +36,32 @@ def download_json(url,headers,querystring,filename="dati.json",payload="",save=F
 	if save:
 		save_json_file(filename, response)
 	return json_object
+
 def list_to_dataframe(list,col_names=['league','home_team','away_team','date','selection','odd']):
 	list=dict(zip(col_names,list))
 	list=pd.DataFrame([list])
 	return list
 
-def init_data():
-	col_names = ['league', 'home_team', 'away_team', 'date', 'selection', 'odd']
+def init_data(col_names = ['league', 'home_team', 'away_team', 'date', 'selection', 'odd']):
 	data = pd.DataFrame(columns=col_names)  # DATAFRAME FOR 1x2
 	return data
+
+def name_id_tree(json_object):
+	name = json_object['name']
+	ID = json_object['id']
+	data = list_to_dataframe([name, ID], ["name", "id"])
+	return data
+
+def tree_popular(json_object):
+	data = init_data(col_names=["name","id"])
+	for event in json_object['popularCompetitions']:
+		data = pd.concat([data, name_id_tree(event)], ignore_index=True)
+	return data
+
+def extract_competition_id(url,headers,querystring):
+	data_tree = download_json(url, headers, querystring)
+	comp_id = tree_popular(data_tree)
+	return comp_id
 
 def t_timestamp(t):
 	t = t / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
@@ -136,70 +143,63 @@ def odds_UO25(json_object):
 
 def extract_odds(competitionid,market,f,save=False):
 	querystring = {"competitionId": str(competitionid), "marketTypes": market, "locale": "it-it"}
-	data=download_json(url,headers,querystring,"dati.json",save)
+	data=download_json(url_comp,headers,querystring,"dati.json",save)
 	dataset=loop_league(data,f)
 	return dataset
 
 
 url_cookie='https://www.pokerstars.it/sports/#/soccer/competitions' #URL for cookie assigment
-cookie = get_cookie_playwright_pokerstar(url_cookie) #URL generic for the cookie
-url = "https://sports.pokerstars.it/sportsbook/v1/api/getSportTree" #URL for the json
-querystring = {"sport":"SOCCER","locale":"it-it"}
-headers = {"Cookie": cookie}
-download_json(url,headers,querystring,"event_tree.json",save=True)  #Competition Tree
+url_tree = 'https://sports.pokerstars.it/sportsbook/v1/api/getSportTree' #URL for the json
+url_comp = 'https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents'
+#Headers don't change inside the program
+headers = {"Cookie": get_cookie(url_cookie)}
+markets = {"home_x_away" : "SOCCER:FT:AXB,MRES","under_over" : "SOCCER:FT:OU,OVUN","goal_nogoal" : "SOCCER:FT:BTS,BTSC"}
+quary_tree={"sport":"SOCCER","locale":"it-it"}
 
 
-#EVENT TREE INITIALIZATION
-#The ID of the competition is required for extract the corrispondent JSON for each competation
-comp_tree_data=open_json_file("event_tree.json")
-#ONLY MOST IMPORTAT
-comp_id=[]
-comp_name=[]
-for comp in comp_tree_data['popularCompetitions']:
-	comp_id.append(comp["id"])
-	comp_name.append(comp["name"])
 
-#print(dict(zip(comp_name,comp_id)))
+#EVENT TREE
+#We need to extract the id for the competitions we want to track
+comp_id=extract_competition_id(url_tree,headers,quary_tree)
 
-'''#ALL COMPETITTIONA
+
+'''
+# TO DO
+# add other important competitions from the generic list "categories"
 comp_id=[]
 comp_name=[]
 for league in comp_tree_data['categories']:
 	for comp in league["competition"]:
 		comp_id.append(comp["id"])
 		comp_name.append(comp["name"])
-
 n_comp = 70
 print(dict(zip(comp_name[0:n_comp],comp_id[0:n_comp])))'''
 
 
-#1° LEAGUE
-#TEST for ID number 0  <----------------------------------------------------------------
+#COMPETITIONS SCRAPING 1X2, UNDER/OVER2.5, GOAL/NOGOAL
 #for downloading the json we need
 #				-The league ID
 #				-the market identification header <--- Always the same
-id=comp_id[0]
-market={
-	"home_x_away" : "SOCCER:FT:AXB,MRES",
-	"under_over" : "SOCCER:FT:OU,OVUN",
-	"goal_nogoal" : "SOCCER:FT:BTS,BTSC"
-}
+#Result is a DataFrame with columns = league', 'home_team', 'away_team', 'date', 'selection', 'odd'
+data_total=init_data()
+for id in comp_id['id']:
+	dataset_1x2 = extract_odds(id, markets["home_x_away"], odds_1x2)
+	dataset_uo = extract_odds(id, markets["under_over"], odds_UO25)
+	dataset_goal = extract_odds(id, markets["goal_nogoal"], odds_goal)
+	data_total = pd.concat([data_total,dataset_1x2, dataset_uo, dataset_goal], ignore_index=True)
+print(data_total)
 
 
-url = "https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents"
-headers = {"Cookie": cookie}
-
-# FIRST   HOME-DRAW-AWAY ODDS
-dataset_1x2=extract_odds(id,market["home_x_away"],odds_1x2)
+'''# FIRST   HOME-DRAW-AWAY ODDS
+dataset_1x2=extract_odds(id,markets["home_x_away"],odds_1x2)
 
 #THEN U25 O25
-dataset_uo=extract_odds(id,market["under_over"],odds_UO25)
+dataset_uo=extract_odds(id,markets["under_over"],odds_UO25)
 
 #THEN GOALNOGOAL
-dataset_goal=extract_odds(id,market["goal_nogoal"],odds_goal)
+dataset_goal=extract_odds(id,markets["goal_nogoal"],odds_goal)
 
-
-print(pd.concat([dataset_1x2,dataset_uo,dataset_goal], ignore_index=True))
+print(pd.concat([dataset_1x2,dataset_uo,dataset_goal], ignore_index=True))'''
 
 
 
