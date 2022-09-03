@@ -1,2 +1,5 @@
 import scraperPS as ps
-print(ps.dataframe_load())
+import pandas as pd
+dati=ps.dataframe_load()
+print(dati)
+pd.DataFrame(columns=["1"])
