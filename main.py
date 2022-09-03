@@ -147,7 +147,7 @@ def extract_odds(competitionid,market,f,save=False):
 	dataset=loop_league(data,f)
 	return dataset
 
-
+#Constant Variables
 url_cookie='https://www.pokerstars.it/sports/#/soccer/competitions' #URL for cookie assigment
 url_tree = 'https://sports.pokerstars.it/sportsbook/v1/api/getSportTree' #URL for the json
 url_comp = 'https://sports.pokerstars.it/sportsbook/v1/api/getCompetitionEvents'
@@ -157,6 +157,9 @@ markets = {"home_x_away" : "SOCCER:FT:AXB,MRES","under_over" : "SOCCER:FT:OU,OVU
 quary_tree={"sport":"SOCCER","locale":"it-it"}
 
 
+#TO DO
+#Create one function lunch() that start the download of all the pieces and return the final dataframe
+#than rename main.py in scraperPS.py "Scraper PokerStar"
 
 #EVENT TREE
 #We need to extract the id for the competitions we want to track
