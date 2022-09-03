@@ -86,6 +86,10 @@ def loop_league(json_object,f):
 
 def odds_goal(json_object):
 	home_team,away_team,league,t = team_league_date(json_object)
+	selection_no=''
+	selection_goal=''
+	odd_no=0
+	odd_goal=0
 	for market in json_object['markets']:
 		for selection in market['selection']:
 				if selection['type']=='No':
@@ -124,6 +128,10 @@ def odds_1x2(json_object):
 
 def odds_UO25(json_object):
 	home_team,away_team,league,t = team_league_date(json_object)
+	selection_u=""
+	selection_o=""
+	odd_u=0
+	odd_o=0
 	for market in json_object['markets']:
 		if market['line']==2.5:
 			for selection in market['selection']:
