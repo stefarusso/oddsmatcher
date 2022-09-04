@@ -197,9 +197,3 @@ for league in comp_tree_data['categories']:
 		comp_name.append(comp["name"])
 n_comp = 70
 print(dict(zip(comp_name[0:n_comp],comp_id[0:n_comp])))'''
-
-
-
-
-
-
