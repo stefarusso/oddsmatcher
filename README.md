@@ -1,5 +1,5 @@
 # Oddsmatcher APP
-It scrape pokerstars sports events odds and betfair lay odds and return a dataframe sorted by the %rating for the event.
+It scrapes pokerstars sport event odds and betfair lay odds and return a dataframe sorted by the %rating for the event.
 
 ```
 Requirement
@@ -11,15 +11,11 @@ pip install betfairlightweight
 
 we need to inspect XHR GET Response on the website
 
-find the usefull json 
-
-copy as cURL
-
-paste on Insomnia APP 
-
-you can send the request and get the same exact json. from all the headers the only one crucial is the cookie so you can un-tick all beside cookie
-
-right click on the file "generate code" export the XHR GET request in python language
+-find the usefull json file
+-copy as cURL
+-paste on a API-request editor like Insomnia APP 
+-you can send the request and get the same exact json. from all the headers the only one crucial is the cookie so you can un-tick all beside cookie
+-right click on the file "generate code" export the XHR GET request in python language
 
 ```python
 import requests
@@ -52,4 +48,16 @@ then we iterate the same procedure for all the main leagues
 
 we get a pandas dataframe with all the info we need.
 
+#### BETFAIR SCRAPER
 
+It is much simpler because Betfair offer free API request for all the information on the website so we don't need to scrape from the front end. Really nice :)
+
+basically we only need:
+-name of the event
+-league 
+-date and time
+-selection name
+-lay odds
+-lay size
+
+and the return dataframe will be merged with the pokerstars one.
