@@ -81,7 +81,11 @@ json_req = '{"filter":{ max_results="100",Eventid="31699484"}}'
 response=api_request(url,ap_key,ssoid,"listMarketCatalogue/",json_req,save=True) #WE USE THAT FOR {"name league" : "id"}
 print(response)'''
 
-
+#----------------------------------------------------------------------------------------------------
+#
+#    BETFAIR API
+#
+#----------------------------------------------------------------------------------------------------
 certificate_root='oddsmatcher/certificates/' #local position of my XRC certificates and secret key
 
 trading = betfairlightweight.APIClient(usr, psw, app_key=ap_key, certs=certificate_root,locale="italy")
@@ -90,15 +94,15 @@ trading.login()
 #SOCCER ID
 results  = trading.betting.list_event_types()
 soccer_id=[[result.event_type.id,result.event_type.name] for result in results if result.event_type.name=="Soccer"]
-print(soccer_id)
 soccer_id = soccer_id[0][0]
+print(f'SOCCER ID :  {soccer_id} , type :  {type(soccer_id)}' )
 
-
+#CREARE FUNZIONE PER QUESTA QUI
 datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=3)).strftime("%Y-%m-%dT%TZ")
-print(datetime_in_a_week)
+print(f'FORMAT DATE AND TIME : {datetime_in_a_week}')
 
 competition_filter = betfairlightweight.filters.market_filter(
-    event_type_ids=[1], # Soccer's event type id is 1
+    event_type_ids=[soccer_id], # Soccer's event type id is 1
     market_start_time={
         'to': datetime_in_a_week
     })
@@ -106,102 +110,90 @@ competitions = trading.betting.list_competitions(
     filter=competition_filter
 )
 
-
+#For Competition and Events dataframe is useful for partial string search
 soccer_competitions = pd.DataFrame({
     'Competition': [competition_object.competition.name for competition_object in competitions],
     'ID': [competition_object.competition.id for competition_object in competitions]
 })
 
-id_serieA=soccer_competitions[soccer_competitions.Competition.str.contains('Serie A' and 'Italian')].iloc[0,:]
-print([id_serieA.ID, id_serieA.Competition])
+#RESAEARCH OF SERIE A COMPETITION ID
+competition_ids=soccer_competitions[soccer_competitions.Competition.str.contains('(?=.*Serie A)(?=.*Italian)')]  #First match "SERIE A" than MATCH "Italian" if there is before "SERIE A"
+#print([competition_id_serieA.ID, competition_id_serieA.Competition])
+competition_id_serieA=competition_ids.ID.item()
+print(f'COMPETITION ID SERIE A : {competition_id_serieA}')
 
 
+
+#RESEARCH EVENT ID
 event_filter = betfairlightweight.filters.market_filter(
     event_type_ids=[soccer_id],
-    competition_ids=[id_serieA.ID],
+    competition_ids=[competition_id_serieA],
     market_start_time={
         'to': (datetime.datetime.utcnow() + datetime.timedelta(weeks=1)).strftime("%Y-%m-%dT%TZ")
     }
 )
 
-
 events = trading.betting.list_events(filter=event_filter)
 events = pd.DataFrame({
-    'Event_Name': [event_object.event.name for event_object in events],
-    'Event_ID': [event_object.event.id for event_object in events],
-    'Country_Code': [event_object.event.country_code for event_object in events],
-    'Time_Zone': [event_object.event.time_zone for event_object in events],
-    'Open_Date': [event_object.event.open_date for event_object in events],
-    'Market_Count': [event_object.market_count for event_object in events]
+    'event_name': [event_object.event.name for event_object in events],
+    'event_id': [event_object.event.id for event_object in events],
+    'country_code': [event_object.event.country_code for event_object in events],
+    'time_zone': [event_object.event.time_zone for event_object in events],
+    'open_date': [event_object.event.open_date for event_object in events],
 })
 
-id_partita=events[events.Event_Name.str.contains("Samp")].iloc[0:]
-print([id_partita.Event_Name,id_partita.Event_ID])
+event=events[events.event_name.str.contains("Samp")].iloc[0:]
+event_id=event.event_id.item()
+print(f'EVENT ID OF {event.event_name.item()} : {event.event_id.item()}')
 
-print('...........')
 
-market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=[str(id_partita.Event_ID.item())])
 
-#I HAVE TO INTRODUCE THE Additional_Data=RUNNER_DESCRIPTION for optaining the selectionid  RUNNER_DESCRIPTION
+#RESEARCH ALL MARKETS SELECTION IDs FOR THE EVENT ID SELECTED
+markets_set=["MATCH_ODDS","OVER_UNDER_25","BOTH_TEAMS_TO_SCORE"]
+market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=[event_id],market_type_codes=markets_set)
 
-print(market_catalogue_filter)
-#market_projection='RUNNER_DESCRIPTION'
 
 
 market_catalogues = trading.betting.list_market_catalogue(
     filter=market_catalogue_filter,
     max_results='100',
+    market_projection=['RUNNER_DESCRIPTION'],
     sort='FIRST_TO_START'
 )
 
-print(market_catalogues[0])
-# Create a DataFrame for each market catalogue
-market_types = pd.DataFrame({
-    'market_name': [market_cat_object.market_name for market_cat_object in market_catalogues],
-    'market_id': [market_cat_object.market_id for market_cat_object in market_catalogues],
-})
-
-id_market = market_types[market_types.market_name=="Match Odds"]
-id_market = id_market.market_id.item()
-print(["market_id",id_market])
+market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
+#print(market_ids)
+selection_id_to_name=[]
+#print(market_catalogues[1].json())
+for market in market_catalogues:
+    for runner in market.runners:
+        selection_id_to_name.append({ str(runner.selection_id) : runner.runner_name}) #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
+#print(markets)
 
 
-
-
-
-def process_runner_books(markets):
-    for market in markets:
-        best_lay_prices = [runner_book.ex.available_to_lay[0].price if runner_book.ex.available_to_lay.price else 1000.0 for runner_book in runner_books]
-        best_lay_sizes = [runner_book.ex.available_to_lay[0].size if runner_book.ex.available_to_lay.size else 1.01 for runner_book in runner_books]
-        selection_ids = [runner_book.selection_id for runner_book in runner_books]
-        df = pd.DataFrame({
-            'selection_id': selection_ids,
-            'best_lay_price': best_lay_prices,
-            'best_lay_size': best_lay_sizes,
-        })
-    return df
-
-
-
-print('-------------')
-
-# Create a price filter. Get all traded and offer data
+market_id=market_ids[0]
+#THEN WE CAN EXTRACT THE LAY PRICE AND LAY SIZE FOR EVERY MARKETID
 price_filter = betfairlightweight.filters.price_projection(
     price_data=['EX_BEST_OFFERS']
 )
-print("PRICE PROJECTION\n")
-print(price_filter)
-# Request market books
 market_books = trading.betting.list_market_book(
-    market_ids=['1.202965175'],
+    #market_ids=['1.202965175'],
+    market_ids=[market_id],
     price_projection=price_filter
 )
 
-#DEBUG
-#runners=json.dumps(json.loads(market_books[0].json()), indent=2)
-#print(runners)
+#print([market.json() for market in market_books])
+selection_id=market_books[0].runners[0].selection_id
+selection_id=str(selection_id)
 
-print(market_books[0]["runners"][0]["ex"]["availableToLay"][0])
-lay_ods=[selection["ex"]["availableToLay"][0]['price'] for selection in market_books[0]["runners"]]
-lay_selection_id=[selection["selectionId"] for selection in market_books[0]["runners"]]
-print(lay_ods,lay_selection_id)
+price=market_books[0].runners[0].ex.available_to_lay[0].price
+size=market_books[0].runners[0].ex.available_to_lay[0].size
+#print(selection_id_to_name[selection],price,size)
+for selection in selection_id_to_name:
+    if selection_id in selection.keys():
+        selection_name=selection[selection_id]
+
+print("SELECTION NAME : ",selection_name)
+print("LAY PRICE : ",price)
+print("LAY SIZE : ",size)
+
