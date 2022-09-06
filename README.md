@@ -50,7 +50,7 @@ we get a pandas dataframe with all the info we need.
 
 #### BETFAIR SCRAPER
 
-It is much simpler because Betfair offer free API request for all the information on the website so we don't need to scrape from the front end. Really nice :)
+It is much simpler because Betfair offers free API request for all the information on the website so we don't need to scrape from the front end. Really nice :)
 
 basically we only need:
 -name of the event
