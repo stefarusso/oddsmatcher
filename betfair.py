@@ -50,9 +50,9 @@ def get_soccer_id(json_object):
 
 #GET THE SESSION TOKEN
 non_interactive_login_url='https://identitysso-cert.betfair.it/api/certlogin'    #Just for get the session token SSOID on the italian website
-certificates=('/media/2TB/oddsmatcher/certificate_xca/betfair_api.crt','/media/2TB/oddsmatcher/certificate_xca/betfair_api.key') #local position of my XRC certificates and secret key
+certificates=('certificates/betfair_api.crt','certificates/betfair_api.key') #local position of my XRC certificates and secret key
 ssoid=get_ssoid(usr,psw,ap_key,certificates,non_interactive_login_url)
-print(f'ssoid: {ssoid}')
+print("ssoid:" + ssoid)
 
 '''#GET EVENT TYPE ID FOR API REQUEST
 url = "https://api.betfair.com/exchange/betting/rest/v1.0/"
@@ -81,7 +81,8 @@ json_req = '{"filter":{ max_results="100",Eventid="31699484"}}'
 response=api_request(url,ap_key,ssoid,"listMarketCatalogue/",json_req,save=True) #WE USE THAT FOR {"name league" : "id"}
 print(response)'''
 
-certificate_root='/media/2TB/oddsmatcher/certificate_xca' #local position of my XRC certificates and secret key
+
+certificate_root='oddsmatcher/certificates/' #local position of my XRC certificates and secret key
 
 trading = betfairlightweight.APIClient(usr, psw, app_key=ap_key, certs=certificate_root,locale="italy")
 trading.login()
