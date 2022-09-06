@@ -1,13 +1,15 @@
-# oddsmatcher
+# Oddsmatcher APP
+It scrape pokerstars sports events odds and betfair lay odds and return a dataframe sorted by the %rating for the event.
+
 ```
 Requirement
 pip install playwright
 playwright install
+pip install betfairlightweight
 ```
+#### POKERSTARS SCRAPER
 
-Oddsmatcher for betfair/bookers matchbetting
-
-inspect XHR GET Response on the website
+we need to inspect XHR GET Response on the website
 
 find the usefull json 
 
@@ -47,3 +49,7 @@ when we have the json file we can start extracting only the info we need:
     - GOAL NOGOAL
 
 then we iterate the same procedure for all the main leagues
+
+we get a pandas dataframe with all the info we need.
+
+
