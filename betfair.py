@@ -152,8 +152,6 @@ print(f'EVENT ID OF {event.event_name.item()} : {event.event_id.item()}')
 markets_set=["MATCH_ODDS","OVER_UNDER_25","BOTH_TEAMS_TO_SCORE"]
 market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=[event_id],market_type_codes=markets_set)
 
-
-
 market_catalogues = trading.betting.list_market_catalogue(
     filter=market_catalogue_filter,
     max_results='100',
@@ -162,7 +160,7 @@ market_catalogues = trading.betting.list_market_catalogue(
 )
 
 
-
+#print(json.dumps(json.loads(market_catalogues[0].json()) ,indent=2))
 
 '''market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
 print(market_ids)
@@ -172,16 +170,27 @@ for market in market_catalogues:
     for runner in market.runners:
         selection_id_to_name.append({ str(runner.selection_id) : runner.runner_name}) #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
 #print(markets)
-print(selection_id_to_name)'''
+print(selection_id_to_name)
 market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
-print(market_ids)
+print(market_ids)'''
+
+
+market_ids=[]
 selection_id_to_name={}
+for market in market_catalogues:
+    market_ids.append(market.market_id)
+    for runner in market.runners:
+        selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name
+print(market_ids)
+print(selection_id_to_name)
+
+'''selection_id_to_name={}
 #print(market_catalogues[1].json())
 for market in market_catalogues:
     for runner in market.runners:
         selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
 #print(markets)
-#print(selection_id_to_name)
+print(selection_id_to_name)'''
 
 
 
