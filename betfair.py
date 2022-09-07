@@ -142,56 +142,57 @@ events = pd.DataFrame({
     'open_date': [event_object.event.open_date for event_object in events],
 })
 
-event=events[events.event_name.str.contains("Samp")].iloc[0:]
-event_id=event.event_id.item()
-print(f'EVENT ID OF {event.event_name.item()} : {event.event_id.item()}')
+#TEST ONLY ONE EVENT
+j=0
+#event_id=events[events.event_name.str.contains("Samp")].iloc[0:].event_id.item()
+event_id=events.event_id
+event_id=event_id.tolist()
+event_id=[event_id[j]] #CANCELLARE QUANDO SI PASSA A N EVENTI
+print(event_id)
+
+event_name=events.event_name
+#event_name=events[events.event_name.str.contains("Samp")].iloc[0:].event_name.item()
+print(f'EVENT ID OF {event_name[j]} : {event_id[j]}')
+print(events)
 
 
-
+#-------------
+#
+#
 #RESEARCH ALL MARKETS SELECTION IDs FOR THE EVENT ID SELECTED
 markets_set=["MATCH_ODDS","OVER_UNDER_25","BOTH_TEAMS_TO_SCORE"]
-market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=[event_id],market_type_codes=markets_set)
+market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=event_id,market_type_codes=markets_set)
 
 market_catalogues = trading.betting.list_market_catalogue(
     filter=market_catalogue_filter,
     max_results='100',
-    market_projection=['RUNNER_DESCRIPTION'],
+    market_projection=['RUNNER_DESCRIPTION','EVENT','COMPETITION'],
     sort='FIRST_TO_START'
 )
 
-
-#print(json.dumps(json.loads(market_catalogues[0].json()) ,indent=2))
-
-'''market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
-print(market_ids)
-selection_id_to_name=[]
-#print(market_catalogues[1].json())
-for market in market_catalogues:
-    for runner in market.runners:
-        selection_id_to_name.append({ str(runner.selection_id) : runner.runner_name}) #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
-#print(markets)
-print(selection_id_to_name)
-market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
-print(market_ids)'''
+print(market_catalogues)
+print(json.dumps(json.loads(market_catalogues[0].json()) ,indent=2))
 
 
-market_ids=[]
+'''market_ids=[]
 selection_id_to_name={}
 for market in market_catalogues:
     market_ids.append(market.market_id)
     for runner in market.runners:
-        selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name
-print(market_ids)
-print(selection_id_to_name)
+        selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name'''
 
-'''selection_id_to_name={}
-#print(market_catalogues[1].json())
+market_ids=[]
+selection_id_dict={}
 for market in market_catalogues:
+    market_ids.append(market.market_id)
+    name=market.event.name
+    date=market.event.open_date
+    comp=market.competition.name
     for runner in market.runners:
-        selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
-#print(markets)
-print(selection_id_to_name)'''
+        selection_id_dict[str(runner.selection_id)] = { "runner_name" : runner.runner_name, "event_name" : name, "date" : date, "competition_name" : comp }
 
+#print(market_ids)
+print(selection_id_dict)
 
 
 
@@ -208,10 +209,13 @@ def request_market_book(market_ids):
 def extract_runner_lay(runner_book):
     selection_id=runner_book.selection_id
     selection_id=str(selection_id)
-    selection_name = selection_id_to_name[selection_id]
+    selection_name = selection_id_dict[selection_id]['runner_name']
+    event =  selection_id_dict[selection_id]['event_name']
+    date = selection_id_dict[selection_id]['date']
+    comp = selection_id_dict[selection_id]['competition_name']
     price=runner_book.ex.available_to_lay[0].price
     size=runner_book.ex.available_to_lay[0].size
-    return selection_name, price, size
+    return comp,event,date,selection_name, price, size
 
 
 market_books=request_market_book(market_ids)
