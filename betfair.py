@@ -161,39 +161,61 @@ market_catalogues = trading.betting.list_market_catalogue(
     sort='FIRST_TO_START'
 )
 
-market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
-#print(market_ids)
+
+
+
+'''market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
+print(market_ids)
 selection_id_to_name=[]
 #print(market_catalogues[1].json())
 for market in market_catalogues:
     for runner in market.runners:
         selection_id_to_name.append({ str(runner.selection_id) : runner.runner_name}) #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
 #print(markets)
+print(selection_id_to_name)'''
+market_ids=[market.market_id for market in market_catalogues] # EVERY MARKETS HAS UNIQUE MARKET ID WHICH IS USED ON MARKETBOOKLIST
+print(market_ids)
+selection_id_to_name={}
+#print(market_catalogues[1].json())
+for market in market_catalogues:
+    for runner in market.runners:
+        selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name #THIS IS ONLY USE TO CHANGE SELECTION_ID IN RUNNER_NAME
+#print(markets)
+#print(selection_id_to_name)
 
 
-market_id=market_ids[0]
-#THEN WE CAN EXTRACT THE LAY PRICE AND LAY SIZE FOR EVERY MARKETID
-price_filter = betfairlightweight.filters.price_projection(
-    price_data=['EX_BEST_OFFERS']
-)
-market_books = trading.betting.list_market_book(
-    #market_ids=['1.202965175'],
-    market_ids=[market_id],
-    price_projection=price_filter
-)
 
-#print([market.json() for market in market_books])
-selection_id=market_books[0].runners[0].selection_id
-selection_id=str(selection_id)
 
-price=market_books[0].runners[0].ex.available_to_lay[0].price
-size=market_books[0].runners[0].ex.available_to_lay[0].size
-#print(selection_id_to_name[selection],price,size)
-for selection in selection_id_to_name:
-    if selection_id in selection.keys():
-        selection_name=selection[selection_id]
+#DOWNLOAD THE FILE WITH ALL THE MARKET ID WE HAVE 
+#WE REQUESTS IT ONLY ONE TIME
+#
 
-print("SELECTION NAME : ",selection_name)
-print("LAY PRICE : ",price)
-print("LAY SIZE : ",size)
+def request_market_book(market_ids):
+    price_filter = betfairlightweight.filters.price_projection(price_data=['EX_BEST_OFFERS'])
+    market_books = trading.betting.list_market_book(market_ids=market_ids,price_projection=price_filter)
+    return market_books
+
+#WORK FOR SINGLE RUNNER e.a. UNDER 2.5, GOAL YES, THE DRAW....
+def extract_runner_lay(runner_book):
+    selection_id=runner_book.selection_id
+    selection_id=str(selection_id)
+    selection_name = selection_id_to_name[selection_id]
+    price=runner_book.ex.available_to_lay[0].price
+    size=runner_book.ex.available_to_lay[0].size
+    return selection_name, price, size
+
+
+market_books=request_market_book(market_ids)
+#print(json.dumps(json.loads(market_books[1].json()),indent=2))
+for market in market_books:               #BAD SOLUTION FOR AN SINGLE ITEM LIST 
+        for runner in market.runners:
+            runner_lay=extract_runner_lay(runner)
+            print(runner_lay)
+
+        
+
+
+
+
+
 
