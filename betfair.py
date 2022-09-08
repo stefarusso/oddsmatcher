@@ -4,12 +4,13 @@ import json
 import scraperPS as sps
 import datetime
 import betfairlightweight
-from betfairlightweight import filters
+
 
 import pandas as pd
 pd.set_option('display.max_columns', None) #FOR DEBUG
 pd.set_option('display.max_row', None) #FOR DEBUG
 
+#USEFULL ONLY IN DEBUGGING
 def get_ssoid(usr,psw,ap_key,certificates,url):
     payload = 'username=' + usr + '&password=' + psw
     headers = {'X-Application': ap_key, 'Content-Type': 'application/x-www-form-urlencoded'}
@@ -23,30 +24,6 @@ def get_ssoid(usr,psw,ap_key,certificates,url):
         print('all the return codes are available here https://docs.developer.betfair.com/display/1smk3cen4v3lu3yomq5qye0ni/Non-Interactive+%28bot%29+login')
     return response['sessionToken']
 
-'''OLD
-    def api_request(url,ap_key,ssoid,request,save=False,filename='data.json'):
-    headers = {'X-Application': ap_key, 'X-Authentication': ssoid, 'content-type': 'application/json'}
-    response = requests.post(url, data=request.encode('utf-8'), headers=headers)
-    if save:
-        sps.save_json_file(filename, response)
-    return json.loads(response.text)'''
-
-def api_request(url,ap_key,ssoid,query,json_req,save=False,filename='data.json'):
-    headers = {'X-Application': ap_key, 'X-Authentication': ssoid, 'content-type': 'application/json'}
-    url = url + query
-    response = requests.post(url, data=json_req, headers=headers)
-    if save:
-        sps.save_json_file(filename, response)
-    return json.loads(response.text)
-
-def get_soccer_id(json_object):
-    for sport in json_object:
-        if sport['eventType']['name'] == 'Soccer':
-            soccer_id = sport['eventType']['id']
-        break
-    return soccer_id
-
-
 
 #GET THE SESSION TOKEN
 non_interactive_login_url='https://identitysso-cert.betfair.it/api/certlogin'    #Just for get the session token SSOID on the italian website
@@ -54,32 +31,6 @@ certificates=('certificates/betfair_api.crt','certificates/betfair_api.key') #lo
 ssoid=get_ssoid(usr,psw,ap_key,certificates,non_interactive_login_url)
 print("ssoid:" + ssoid)
 
-'''#GET EVENT TYPE ID FOR API REQUEST
-url = "https://api.betfair.com/exchange/betting/rest/v1.0/"
-json_req = '{"filter":{ }}'
-response=api_request(url,ap_key,ssoid,"listEventTypes/",json_req)
-soccer_id=get_soccer_id(response)
-print(soccer_id)
-
-
-#GET MARKET TYPE ID FOR API REQUEST
-#response=api_request(betting_api_url,ap_key,ssoid,'{  "jsonrpc" : "2.0" , "method" : "SportsAPING/v1.0/listMarketTypes" , "params" :{  "filter":{ }  },  "id" : 1 }')
-
-json_req = '{"filter":{ "eventTypeIds" : ["' + soccer_id + '"]}}'
-response=api_request(url,ap_key,ssoid,"listCompetitions/",json_req,save=True) #WE USE THAT FOR {"name league" : "id"}
-#TRY WITH ONLY SERIE A
-serie_A_id="81"
-print("COMPETIZIONE = "+serie_A_id)
-
-json_req = '{"filter":{ "competitionIds" : ["' + serie_A_id + '"]}}'
-response=api_request(url,ap_key,ssoid,"listEvents/",json_req,save=True) #WE USE THAT FOR {"name league" : "id"}
-print(response)
-Torino_Lecce_id="31699484"
-print("PARTITA = "+Torino_Lecce_id)
-
-json_req = '{"filter":{ max_results="100",Eventid="31699484"}}'
-response=api_request(url,ap_key,ssoid,"listMarketCatalogue/",json_req,save=True) #WE USE THAT FOR {"name league" : "id"}
-print(response)'''
 
 #----------------------------------------------------------------------------------------------------
 #
@@ -95,10 +46,10 @@ trading.login()
 results  = trading.betting.list_event_types()
 soccer_id=[[result.event_type.id,result.event_type.name] for result in results if result.event_type.name=="Soccer"]
 soccer_id = soccer_id[0][0]
-print(f'SOCCER ID :  {soccer_id} , type :  {type(soccer_id)}' )
+#print(f'SOCCER ID :  {soccer_id} , type :  {type(soccer_id)}' )
 
 #CREARE FUNZIONE PER QUESTA QUI
-datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=3)).strftime("%Y-%m-%dT%TZ")
+datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
 print(f'FORMAT DATE AND TIME : {datetime_in_a_week}')
 
 competition_filter = betfairlightweight.filters.market_filter(
@@ -134,35 +85,27 @@ event_filter = betfairlightweight.filters.market_filter(
 )
 
 events = trading.betting.list_events(filter=event_filter)
-#events = pd.DataFrame({
 '''events = pd.DataFrame({
+events = pd.DataFrame({
     'event_name': [event_object.event.name for event_object in events],
     'event_id': [event_object.event.id for event_object in events],
     'country_code': [event_object.event.country_code for event_object in events],
     'time_zone': [event_object.event.time_zone for event_object in events],
     'open_date': [event_object.event.open_date for event_object in events],
 })'''
-event_id_dict={}
-for event in events:
-    event_id_dict[event.event.id]=event.event.name
-print(list(event_id_dict.keys()))
 
-#TEST ONLY ONE EVENT
-j=0
+def extract_event(event_list):
+    event_dict = {}
+    for event in event_list:
+        event_dict[event.event.id]=event.event.name
+    return event_dict
 
-event_id= event_id_dict.keys()
-event_id = list(event_id)
-
-
-event_id=[event_id[j],event_id[j+1]]   #CANCELLARE QUANDO SI PASSA A N EVENTI
+event_dict=extract_event(events)
+event_id = list(event_dict.keys())
 
 
 
-
-#event_name=events.event_name
-#event_name=events[events.event_name.str.contains("Samp")].iloc[0:].event_name.item()
-#print(events)
-
+#event_id=[event_id[j],event_id[j+1]]   #CANCELLARE QUANDO SI PASSA A N EVENTI
 
 
 #RESEARCH ALL MARKETS SELECTION IDs FOR THE EVENT ID SELECTED
@@ -222,8 +165,8 @@ def extract_runner_lay(runner_book,market_id,market_dict,selection_dict):
 market_ids=list(market_dict.keys())
 
 market_books=request_market_book(market_ids)
- #sono 6 marketbook
-print(json.dumps(json.loads(market_books[0].json()),indent=2))
+#sono 6 marketbook
+#print(json.dumps(json.loads(market_books[0].json()),indent=2))
 
 for market in market_books:               #BAD SOLUTION FOR AN SINGLE ITEM LIST
     market_id=str(market.market_id)
