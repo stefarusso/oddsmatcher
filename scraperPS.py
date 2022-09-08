@@ -63,7 +63,8 @@ def extract_competition_id(url,headers,querystring):
 
 def t_timestamp(t):
 	t = t / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
-	t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
+	#t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
+	t = datetime.utcfromtimestamp(t)
 	return t
 
 def team_league_date(json_object):

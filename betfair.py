@@ -134,32 +134,63 @@ event_filter = betfairlightweight.filters.market_filter(
 )
 
 events = trading.betting.list_events(filter=event_filter)
-events = pd.DataFrame({
+#events = pd.DataFrame({
+'''events = pd.DataFrame({
     'event_name': [event_object.event.name for event_object in events],
     'event_id': [event_object.event.id for event_object in events],
     'country_code': [event_object.event.country_code for event_object in events],
     'time_zone': [event_object.event.time_zone for event_object in events],
     'open_date': [event_object.event.open_date for event_object in events],
-})
+})'''
+event_id_dict={}
+for event in events:
+    event_id_dict[event.event.id]=event.event.name
+print(list(event_id_dict.keys()))
 
 #TEST ONLY ONE EVENT
 j=0
+
+event_id= event_id_dict.keys()
+event_id = list(event_id)
 #event_id=events[events.event_name.str.contains("Samp")].iloc[0:].event_id.item()
-event_id=events.event_id
-event_id=event_id.tolist()
-event_id=[event_id[j]] #CANCELLARE QUANDO SI PASSA A N EVENTI
+#event_id=events.event_id                       #creare dictionary {"eventid" : "event_name"} 
+#event_id=event_id.tolist()
+event_id=[event_id[j],event_id[j+1]] #CANCELLARE QUANDO SI PASSA A N EVENTI
 print(event_id)
 
-event_name=events.event_name
+event_name=list(event_id_dict.values())
+#event_name=events.event_name
 #event_name=events[events.event_name.str.contains("Samp")].iloc[0:].event_name.item()
 print(f'EVENT ID OF {event_name[j]} : {event_id[j]}')
-print(events)
+#print(events)
 
 
 #-------------
 #
 #
 #RESEARCH ALL MARKETS SELECTION IDs FOR THE EVENT ID SELECTED
+
+
+
+
+# WRITE FUNCTION IN A WAY TO INCLUDE ALSO THE EVENT ID IN THE DICT RETUNED
+
+'''def extract_market_catalogue(event_id):
+    markets_set=["MATCH_ODDS","OVER_UNDER_25","BOTH_TEAMS_TO_SCORE"]
+    market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=event_id,market_type_codes=markets_set)
+    market_catalogues = trading.betting.list_market_catalogue(filter=market_catalogue_filter,max_results='5000',market_projection=['RUNNER_DESCRIPTION','EVENT','COMPETITION'],
+market_projection=['RUNNER_DESCRIPTION','EVENT','COMPETITION'],
+    sort='FIRST_TO_START')
+    market_id={}'''
+    
+
+
+
+
+
+
+
+
 markets_set=["MATCH_ODDS","OVER_UNDER_25","BOTH_TEAMS_TO_SCORE"]
 market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=event_id,market_type_codes=markets_set)
 
@@ -170,29 +201,29 @@ market_catalogues = trading.betting.list_market_catalogue(
     sort='FIRST_TO_START'
 )
 
-print(market_catalogues)
-print(json.dumps(json.loads(market_catalogues[0].json()) ,indent=2))
-
-
-'''market_ids=[]
-selection_id_to_name={}
-for market in market_catalogues:
-    market_ids.append(market.market_id)
-    for runner in market.runners:
-        selection_id_to_name[ str(runner.selection_id) ] = runner.runner_name'''
+#print(market_catalogues)
+print(json.dumps(json.loads(market_catalogues[2].json()) ,indent=2))
 
 market_ids=[]
 selection_id_dict={}
 for market in market_catalogues:
     market_ids.append(market.market_id)
     name=market.event.name
-    date=market.event.open_date
+    date=market.event.open_date + datetime.timedelta(hours=2)     #GMT to ROME GMT+2
+    date=date.strftime('%d-%m-%Y %H:%M:%S') ### TO DELEATE ###
     comp=market.competition.name
     for runner in market.runners:
         selection_id_dict[str(runner.selection_id)] = { "runner_name" : runner.runner_name, "event_name" : name, "date" : date, "competition_name" : comp }
 
 #print(market_ids)
-print(selection_id_dict)
+
+
+
+
+
+
+
+
 
 
 
@@ -206,7 +237,7 @@ def request_market_book(market_ids):
     return market_books
 
 #WORK FOR SINGLE RUNNER e.a. UNDER 2.5, GOAL YES, THE DRAW....
-def extract_runner_lay(runner_book):
+def extract_runner_lay(runner_book,selection_id_dict):
     selection_id=runner_book.selection_id
     selection_id=str(selection_id)
     selection_name = selection_id_dict[selection_id]['runner_name']
@@ -222,11 +253,8 @@ market_books=request_market_book(market_ids)
 #print(json.dumps(json.loads(market_books[1].json()),indent=2))
 for market in market_books:               #BAD SOLUTION FOR AN SINGLE ITEM LIST 
         for runner in market.runners:
-            runner_lay=extract_runner_lay(runner)
+            runner_lay=extract_runner_lay(runner,selection_id_dict)
             print(runner_lay)
-
-        
-
 
 
 
