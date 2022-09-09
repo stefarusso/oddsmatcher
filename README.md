@@ -12,9 +12,13 @@ pip install betfairlightweight
 we need to inspect XHR GET Response on the website
 
 -find the usefull json file
+
 -copy as cURL
+
 -paste on a API-request editor like Insomnia APP 
+
 -you can send the request and get the same exact json. from all the headers the only one crucial is the cookie so you can un-tick all beside cookie
+
 -right click on the file "generate code" export the XHR GET request in python language
 
 ```python
@@ -53,11 +57,17 @@ we get a pandas dataframe with all the info we need.
 It is much simpler because Betfair offers free API request for all the information on the website so we don't need to scrape from the front end. Really nice :)
 
 basically we only need:
+
 -name of the event
+
 -league 
+
 -date and time
+
 -selection name
+
 -lay odds
+
 -lay size
 
 and the return dataframe will be merged with the pokerstars one.
