@@ -183,7 +183,10 @@ def dataframe_load():
 	return data_total
 
 if __name__ == "__main__":
-	print(dataframe_load())
+	data=dataframe_load()
+	print(data.league.unique())
+
+
 
 
 
