@@ -6,6 +6,17 @@ import datetime
 import betfairlightweight
 
 
+'''events = pd.DataFrame({
+events = pd.DataFrame({
+    'event_name': [event_object.event.name for event_object in events],
+    'event_id': [event_object.event.id for event_object in events],
+    'country_code': [event_object.event.country_code for event_object in events],
+    'time_zone': [event_object.event.time_zone for event_object in events],
+    'open_date': [event_object.event.open_date for event_object in events],
+})'''
+
+
+
 import pandas as pd
 pd.set_option('display.max_columns', None) #FOR DEBUG
 pd.set_option('display.max_row', None) #FOR DEBUG
@@ -46,7 +57,21 @@ trading.login()
 results  = trading.betting.list_event_types()
 soccer_id=[[result.event_type.id,result.event_type.name] for result in results if result.event_type.name=="Soccer"]
 soccer_id = soccer_id[0][0]
+print(soccer_id)
 #print(f'SOCCER ID :  {soccer_id} , type :  {type(soccer_id)}' )
+
+
+
+
+
+
+
+
+
+
+#I NEED A LIST FROM POKERSTARS SCRAPER WITH ALL THE COMPETITION NAMES
+
+
 
 #CREARE FUNZIONE PER QUESTA QUI
 datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
@@ -69,7 +94,9 @@ soccer_competitions = pd.DataFrame({
 
 #RESAEARCH OF SERIE A COMPETITION ID
 competition_ids=soccer_competitions[soccer_competitions.Competition.str.contains('(?=.*Serie A)(?=.*Italian)')]  #First match "SERIE A" than MATCH "Italian" if there is before "SERIE A"
+competition_ids=competition_ids[~competition_ids.Competition.str.contains('(W)',regex=True)] # delete Womans competitions
 #print([competition_id_serieA.ID, competition_id_serieA.Competition])
+print(competition_ids)
 competition_id_serieA=competition_ids.ID.item()
 print(f'COMPETITION ID SERIE A : {competition_id_serieA}')
 
@@ -85,37 +112,23 @@ event_filter = betfairlightweight.filters.market_filter(
 )
 
 events = trading.betting.list_events(filter=event_filter)
-'''events = pd.DataFrame({
-events = pd.DataFrame({
-    'event_name': [event_object.event.name for event_object in events],
-    'event_id': [event_object.event.id for event_object in events],
-    'country_code': [event_object.event.country_code for event_object in events],
-    'time_zone': [event_object.event.time_zone for event_object in events],
-    'open_date': [event_object.event.open_date for event_object in events],
-})'''
 
-def extract_event(event_list):
+'''def extract_event(event_list):
     event_dict = {}
     for event in event_list:
         event_dict[event.event.id]=event.event.name
-    return event_dict
+    return event_dict'''
 
-event_dict=extract_event(events)
-event_id = list(event_dict.keys())
+def extract_event(event_list):
+    event_l = []
+    for event in event_list:
+        event_l.append(str(event.event.id))
+    return event_l
 
+event_id=extract_event(events)
 
-
-#event_id=[event_id[j],event_id[j+1]]   #CANCELLARE QUANDO SI PASSA A N EVENTI
-
-
-#RESEARCH ALL MARKETS SELECTION IDs FOR THE EVENT ID SELECTED
-
-
-
-
-# WRITE FUNCTION IN A WAY TO INCLUDE ALSO THE EVENT ID IN THE DICT RETUNED
-
-
+#event_dict=extract_event(events)
+#event_id = list(event_dict.keys())
 
 
 def extract_market_catalogue(event_id):
@@ -127,7 +140,6 @@ def extract_market_catalogue(event_id):
     #print(market_catalogues)
     #print(event_id)
     #print(json.dumps(json.loads(market_catalogues[2].json()), indent=2))
-
     for market in market_catalogues:
         market_id = market.market_id
         name = market.event.name
@@ -155,12 +167,12 @@ def request_market_book(market_ids):
 def extract_runner_lay(runner_book,market_id,market_dict,selection_dict):
     selection_id=str(runner_book.selection_id)
     selection_name = selection_dict[selection_id]
-    event = market_dict[market_id]['event_name']
+    home,away = market_dict[market_id]['event_name'].split(" v ")
     date = market_dict[market_id]['date']
     comp = market_dict[market_id]['competition_name']
     price=runner_book.ex.available_to_lay[0].price
     size=runner_book.ex.available_to_lay[0].size
-    return comp,event,date,selection_name, price, size
+    return comp,home,away,date,selection_name, price, size
 
 market_ids=list(market_dict.keys())
 
@@ -173,6 +185,8 @@ for market in market_books:               #BAD SOLUTION FOR AN SINGLE ITEM LIST
     for runner in market.runners:
         runner_lay=extract_runner_lay(runner,market_id,market_dict,selection_dict)
         print(runner_lay)
+
+
 
 
 
