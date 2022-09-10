@@ -60,59 +60,87 @@ soccer_id = soccer_id[0][0]
 print(soccer_id)
 #print(f'SOCCER ID :  {soccer_id} , type :  {type(soccer_id)}' )
 
-
-
-
-
-
-
-
-
-
-#I NEED A LIST FROM POKERSTARS SCRAPER WITH ALL THE COMPETITION NAMES
-competitions_pokerstar={'Italia - Serie A','Italia - Serie B','Champions League','Europa League','Conference League','Inghilterra - Premier League','Spagna - La Liga','Germania - Bundesliga','Francia - Ligue 1','Portogallo - Primeira Liga'}
-
-
-
-
-
-
-#<-----------
-#
-#
-# use this function for every new competition id. CREATE A SEPARATE FILE FOR STORAGE OF THE DICTIONARY. MINIMIZE THE REQUESTS!
-#
-#
-#<-----------
-
-
-#CREARE FUNZIONE PER QUESTA QUI
 datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
 print(f'FORMAT DATE AND TIME : {datetime_in_a_week}')
 
-competition_filter = betfairlightweight.filters.market_filter(
-    event_type_ids=[soccer_id], # Soccer's event type id is 1
-    market_start_time={
-        'to': datetime_in_a_week
-    })
-competitions = trading.betting.list_competitions(
-    filter=competition_filter, locale="it"
-)
 
-#For Competition and Events dataframe is useful for partial string search
-soccer_competitions = pd.DataFrame({
-    'Competition': [competition_object.competition.name for competition_object in competitions],
-    'ID': [competition_object.competition.id for competition_object in competitions]
-})
+competitions_pokerstar=['Italia - Serie A','Italia - Serie B','Champions League','Europa League','Conference League','Inghilterra - Premier League','Spagna - La Liga','Germania - Bundesliga','Francia - Ligue 1','Portogallo - Primeira Liga']
+competitions_pokerstar=[i.replace(" - "," ") for i in competitions_pokerstar]
+
+print(competitions_pokerstar[1])
 
 
-#RESAEARCH OF SERIE A COMPETITION ID
-competition_ids=soccer_competitions[soccer_competitions.Competition.str.contains('(?=.*Serie A)(?=.*Ita)')]  #First match "SERIE A" than MATCH "Italian" if there is before "SERIE A"
-competition_ids=competition_ids[~competition_ids.Competition.str.contains('(F)',regex=True)] # delete Womans competitions (F=Femminile in italian)
-#print([competition_id_serieA.ID, competition_id_serieA.Competition])
-print(competition_ids)
-competition_id_serieA=competition_ids.ID.item()
-print(f'COMPETITION ID SERIE A : {competition_id_serieA}')
+
+
+'''competition_filter = betfairlightweight.filters.market_filter(event_type_ids=[soccer_id],text_query=competitions_pokerstar[0], market_start_time={'to': datetime_in_a_week})
+competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
+print(competitions)
+print(json.dumps(json.loads(competitions[1].json()), indent=2))'''
+
+
+
+
+'''def extract_competition_id(competitions):
+    competitions_dict = {
+    'Competition': [object.competition.name for object in competitions if not "(F)" in object.competition.name ],      #(F) remove entry from women championships
+    'ID': [object.competition.id for object in competitions if not "(F)" in object.competition.name ]
+    }
+    return competitions_dict'''
+
+def filter_competition_id(pokerstar_name,competitions,dictionary):                      #FARLO DIVENTARE UNA FUNZIONE DELL'OGGETTO COMPETITION_ID.add_id(competitions)
+    for object in competitions :
+        if not "(F)" in object.competition.name:
+            dictionary[pokerstar_name]=object.competition.id
+    return dictionary
+
+
+def extract_1_competition_id(competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week):
+    competition_filter = betfairlightweight.filters.market_filter(event_type_ids=[soccer_id],text_query=competitions_pokerstar,market_start_time={'to': datetime_in_a_week})
+    competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
+    competition_dict = filter_competition_id(competitions_pokerstar, competitions, competition_dict)
+    return competition_dict
+
+'''competition_dict = {}
+competition_dict=filter_competition_id(competition_id[0],competitions,competition_dict)
+print(competition_dict)'''
+
+
+def extract_all_competition_id(competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week):
+    for competition in competitions_pokerstar:
+        competition_dict = extract_1_competition_id(competition_dict, competition, soccer_id,datetime_in_a_week)
+    return competition_dict
+
+def open_json_file(filename):
+	with open(filename) as json_file:
+		json_data = json.load(json_file)
+	return json_data
+
+
+
+#------------------------------------------------------------------------------------------------------------------#
+# IMPLEMENTARE FUNZIONE CHE CHECKA SE ELEMENTO GIA PRESENTE IN competition_dict SENNO LO AGGIOUNGE E SALVA IL FILE #
+#------------------------------------------------------------------------------------------------------------------#
+
+
+competition_dict={}
+competition_dict=extract_all_competition_id(competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week)
+print(competition_dict)
+
+
+def save_json_file(filename,object):
+	with open(filename, 'w') as outfile:
+		json.dump(object, outfile,indent=2)
+
+save_json_file("competition_dict.json",competition_dict)
+
+
+
+
+
+
+
+
+
 
 
 
@@ -123,7 +151,7 @@ def request_event_list(soccer_id,competition_id):
     events=trading.betting.list_events(filter=event_filter)
     return events
 
-events=request_event_list([soccer_id],[competition_id_serieA])
+events=request_event_list([soccer_id],[competition_dict[competitions_pokerstar[0]]])
 
 
 def extract_event(event_list):
