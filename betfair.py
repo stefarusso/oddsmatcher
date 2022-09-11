@@ -55,21 +55,13 @@ trading.login()
 
 #SOCCER ID
 results  = trading.betting.list_event_types()
-soccer_id=[[result.event_type.id,result.event_type.name] for result in results if result.event_type.name=="Soccer"]
-soccer_id = soccer_id[0][0]
-print(soccer_id)
-#print(f'SOCCER ID :  {soccer_id} , type :  {type(soccer_id)}' )
+soccer_id=[result.event_type.id for result in results if result.event_type.name=="Soccer"] # Betfair API wants id in a list
 
 datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
-print(f'FORMAT DATE AND TIME : {datetime_in_a_week}')
 
-
+#This is given by scraperPS
 competitions_pokerstar=['Italia - Serie A','Italia - Serie B','Champions League','Europa League','Conference League','Inghilterra - Premier League','Spagna - La Liga','Germania - Bundesliga','Francia - Ligue 1','Portogallo - Primeira Liga']
 competitions_pokerstar=[i.replace(" - "," ") for i in competitions_pokerstar]
-
-print("POKERSTAR COMPETITIONS:")
-print(competitions_pokerstar)
-
 
 def filter_competition_id(pokerstar_name,competitions,dictionary):                      #FARLO DIVENTARE UNA FUNZIONE DELL'OGGETTO COMPETITION_ID.add_id(competitions)
     for object in competitions :
@@ -80,7 +72,7 @@ def filter_competition_id(pokerstar_name,competitions,dictionary):              
 
 def extract_1_competition_id(competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week):
     print("API REQUEST COMP ID")
-    competition_filter = betfairlightweight.filters.market_filter(event_type_ids=[soccer_id],text_query=competitions_pokerstar,market_start_time={'to': datetime_in_a_week})
+    competition_filter = betfairlightweight.filters.market_filter(event_type_ids=soccer_id,text_query=competitions_pokerstar,market_start_time={'to': datetime_in_a_week})
     competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
     competition_dict = filter_competition_id(competitions_pokerstar, competitions, competition_dict)
     return competition_dict
@@ -101,6 +93,7 @@ def open_json_file(filename):
 def save_json_file(filename,object):
 	with open(filename, 'w') as outfile:
 		json.dump(object, outfile,indent=2)
+
 def initialize_competition_dict(filename,competitions_pokerstar, soccer_id,datetime_in_a_week):
     try:
         competition_dict = open_json_file(filename)
@@ -110,19 +103,7 @@ def initialize_competition_dict(filename,competitions_pokerstar, soccer_id,datet
     save_json_file(filename, competition_dict)
     return competition_dict
 
-competition_dict=initialize_competition_dict("competition_dict.json",competitions_pokerstar, soccer_id,datetime_in_a_week)
-
-
-
-
-
-
-
-
-
-
-
-
+competition_dict=initialize_competition_dict("competition_dict.json",[competitions_pokerstar[1]], soccer_id,datetime_in_a_week)
 
 
 
@@ -134,12 +115,17 @@ def request_event_list(soccer_id,competition_id):
     events=trading.betting.list_events(filter=event_filter)
     return events
 
+def dict_to_list(competition_dict,competitions_pokerstar):
+    out_list=[]
+    for comp in competitions_pokerstar:
+        try:
+            out_list.append(competition_dict[comp])
+        except KeyError as err:
+            print(comp + " Not found on Betfair !!!")
+    return out_list
 
-#trovare un modo di passare una lista con solo gli id delle competizioni in competitions_pokerstar
-events=request_event_list([soccer_id],[competition_dict[competitions_pokerstar[0]]])
-
-
-#print([i.event.name for i in events])
+competition_ids=dict_to_list(competition_dict,competitions_pokerstar)
+events=request_event_list(soccer_id,competition_ids)
 
 def extract_event(event_list):
     event_l = []
@@ -149,8 +135,7 @@ def extract_event(event_list):
 
 event_id=extract_event(events)
 
-#event_dict=extract_event(events)
-#event_id = list(event_dict.keys())
+
 
 
 def extract_market_catalogue(event_id):
@@ -184,9 +169,9 @@ def extract_market_catalogue(event_id):
 
 selection_dict,market_dict=extract_market_catalogue(event_id)
 
-#DOWNLOAD THE FILE WITH ALL THE MARKET ID WE HAVE 
-#WE REQUESTS IT ONLY ONE TIME
-#
+
+
+
 
 def request_market_book(market_ids):
     price_filter = betfairlightweight.filters.price_projection(price_data=['EX_BEST_OFFERS'])
@@ -208,11 +193,27 @@ def extract_runner_lay(runner_book,market_id,market_dict,selection_dict):
         size="NA"
     return comp,home, away,date,selection_name, price, size
 
-market_ids=list(market_dict.keys())
-market_books=request_market_book(market_ids)
-#sono 6 marketbook
-#print(json.dumps(json.loads(market_books[0].json()),indent=2))
+#DOWNLOAD THE FILE WITH ALL THE MARKET ID WE HAVE. 40 ENTRY AT TIME BECAUSE BETFAIR API HAS MAX DATA IN THE REQUESTS
+def export_market_book(market_dict):
+    market_ids = list(market_dict.keys())
+    market_len = len(market_ids)
+    market_books = []
+    if market_len > 40:
+        start = 0
+        stop = 40
+        market_books.extend(request_market_book(market_ids[start:stop]))
+        for i in range(market_len // 40 - 1):
+            start += 40
+            stop += 40
+            market_books.extend(request_market_book(market_ids[start:stop]))
+        modulus = market_len % 40
+        if modulus != 0:
+            start += 40
+            stop += market_len % 40
+            market_books.extend(request_market_book(market_ids[start:stop]))
+    return market_books
 
+#FINAL FUNCTION WHICH EXPORT FINAL DATAFRAME
 def export_runners(market_books,market_dict,selection_dict):
     for market in market_books:
         market_id=str(market.market_id)
@@ -221,9 +222,14 @@ def export_runners(market_books,market_dict,selection_dict):
         #print(json.dumps(json.loads(market.json()), indent=2))
         for runner in market.runners:
             runner_lay=extract_runner_lay(runner,market_id,market_dict,selection_dict)
-            print(runner_lay)
+            print(runner_lay) #change in appen row on a pandas dataframe
             export_list.append(runner_lay)
     return export_list
+
+market_books=export_market_book(market_dict)
+
+
+
 
 all_runners=export_runners(market_books,market_dict,selection_dict)
 
