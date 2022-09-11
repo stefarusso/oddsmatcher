@@ -67,25 +67,9 @@ print(f'FORMAT DATE AND TIME : {datetime_in_a_week}')
 competitions_pokerstar=['Italia - Serie A','Italia - Serie B','Champions League','Europa League','Conference League','Inghilterra - Premier League','Spagna - La Liga','Germania - Bundesliga','Francia - Ligue 1','Portogallo - Primeira Liga']
 competitions_pokerstar=[i.replace(" - "," ") for i in competitions_pokerstar]
 
-print(competitions_pokerstar[1])
+print("POKERSTAR COMPETITIONS:")
+print(competitions_pokerstar)
 
-
-
-
-'''competition_filter = betfairlightweight.filters.market_filter(event_type_ids=[soccer_id],text_query=competitions_pokerstar[0], market_start_time={'to': datetime_in_a_week})
-competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
-print(competitions)
-print(json.dumps(json.loads(competitions[1].json()), indent=2))'''
-
-
-
-
-'''def extract_competition_id(competitions):
-    competitions_dict = {
-    'Competition': [object.competition.name for object in competitions if not "(F)" in object.competition.name ],      #(F) remove entry from women championships
-    'ID': [object.competition.id for object in competitions if not "(F)" in object.competition.name ]
-    }
-    return competitions_dict'''
 
 def filter_competition_id(pokerstar_name,competitions,dictionary):                      #FARLO DIVENTARE UNA FUNZIONE DELL'OGGETTO COMPETITION_ID.add_id(competitions)
     for object in competitions :
@@ -95,43 +79,42 @@ def filter_competition_id(pokerstar_name,competitions,dictionary):              
 
 
 def extract_1_competition_id(competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week):
+    print("API REQUEST COMP ID")
     competition_filter = betfairlightweight.filters.market_filter(event_type_ids=[soccer_id],text_query=competitions_pokerstar,market_start_time={'to': datetime_in_a_week})
     competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
     competition_dict = filter_competition_id(competitions_pokerstar, competitions, competition_dict)
     return competition_dict
 
-'''competition_dict = {}
-competition_dict=filter_competition_id(competition_id[0],competitions,competition_dict)
-print(competition_dict)'''
-
 
 def extract_all_competition_id(competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week):
     for competition in competitions_pokerstar:
-        competition_dict = extract_1_competition_id(competition_dict, competition, soccer_id,datetime_in_a_week)
+        if competition not in competition_dict:
+            competition_dict = extract_1_competition_id(competition_dict, competition, soccer_id,datetime_in_a_week)
     return competition_dict
+
 
 def open_json_file(filename):
 	with open(filename) as json_file:
 		json_data = json.load(json_file)
 	return json_data
 
-
-
-#------------------------------------------------------------------------------------------------------------------#
-# IMPLEMENTARE FUNZIONE CHE CHECKA SE ELEMENTO GIA PRESENTE IN competition_dict SENNO LO AGGIOUNGE E SALVA IL FILE #
-#------------------------------------------------------------------------------------------------------------------#
-
-
-competition_dict={}
-competition_dict=extract_all_competition_id(competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week)
-print(competition_dict)
-
-
 def save_json_file(filename,object):
 	with open(filename, 'w') as outfile:
 		json.dump(object, outfile,indent=2)
+def initialize_competition_dict(filename,competitions_pokerstar, soccer_id,datetime_in_a_week):
+    try:
+        competition_dict = open_json_file(filename)
+    except FileNotFoundError:
+        competition_dict = {}
+    competition_dict = extract_all_competition_id(competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week)
+    save_json_file(filename, competition_dict)
+    return competition_dict
 
-save_json_file("competition_dict.json",competition_dict)
+competition_dict=initialize_competition_dict("competition_dict.json",competitions_pokerstar, soccer_id,datetime_in_a_week)
+
+
+
+
 
 
 
@@ -151,8 +134,12 @@ def request_event_list(soccer_id,competition_id):
     events=trading.betting.list_events(filter=event_filter)
     return events
 
+
+#trovare un modo di passare una lista con solo gli id delle competizioni in competitions_pokerstar
 events=request_event_list([soccer_id],[competition_dict[competitions_pokerstar[0]]])
 
+
+#print([i.event.name for i in events])
 
 def extract_event(event_list):
     event_l = []
@@ -168,6 +155,7 @@ event_id=extract_event(events)
 
 def extract_market_catalogue(event_id):
     markets_set = ["MATCH_ODDS", "OVER_UNDER_25", "BOTH_TEAMS_TO_SCORE"]
+    betfair_to_pokerstars = {'Over 2,5 goal': 'Over 2.5', 'Under 2,5 goal': 'Under 2.5', 'Sì': 'GOAL', 'No': 'NOGOAL'}
     market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=event_id,market_type_codes=markets_set)
     market_catalogues = trading.betting.list_market_catalogue(filter=market_catalogue_filter, locale="it", max_results='1000',market_projection=['RUNNER_DESCRIPTION', 'EVENT','COMPETITION'],sort='FIRST_TO_START')
     selection_dict = {}
@@ -183,8 +171,15 @@ def extract_market_catalogue(event_id):
         comp = market.competition.name
         for runner in market.runners:
             market_dict[str(market_id)] = { "event_name" : name,  "date" : date, "competition_name" : comp }
-            selection_dict[str(runner.selection_id)] =  runner.runner_name
+            selection_name=runner.runner_name
+            if selection_name in betfair_to_pokerstars:
+                selection_dict[str(runner.selection_id)] = betfair_to_pokerstars[selection_name]
+            else:
+                selection_dict[str(runner.selection_id)] = selection_name
     return selection_dict, market_dict
+
+
+
 
 
 selection_dict,market_dict=extract_market_catalogue(event_id)
@@ -205,8 +200,12 @@ def extract_runner_lay(runner_book,market_id,market_dict,selection_dict):
     home, away = market_dict[market_id]['event_name'].split(" - ")
     date = market_dict[market_id]['date']
     comp = market_dict[market_id]['competition_name']
-    price=runner_book.ex.available_to_lay[0].price
-    size=runner_book.ex.available_to_lay[0].size
+    try:
+        price=runner_book.ex.available_to_lay[0].price
+        size=runner_book.ex.available_to_lay[0].size
+    except IndexError:
+        price="NA"
+        size="NA"
     return comp,home, away,date,selection_name, price, size
 
 market_ids=list(market_dict.keys())
@@ -218,6 +217,8 @@ def export_runners(market_books,market_dict,selection_dict):
     for market in market_books:
         market_id=str(market.market_id)
         export_list=[]
+        #print(market_dict["1.203229165"])
+        #print(json.dumps(json.loads(market.json()), indent=2))
         for runner in market.runners:
             runner_lay=extract_runner_lay(runner,market_id,market_dict,selection_dict)
             print(runner_lay)
