@@ -67,27 +67,27 @@ def filter_competition_id(pokerstar_name,competitions,dictionary):
 
 #FUNTION USED BY initialize_competition_dict()
 #API REQUEST OF THE COMPETITION ID
-def extract_1_competition_id(competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week):
+def extract_1_competition_id(trading,competition_dict,competitions_pokerstar,soccer_id,datetime_in_a_week):
     competition_filter = betfairlightweight.filters.market_filter(event_type_ids=soccer_id,text_query=competitions_pokerstar,market_start_time={'to': datetime_in_a_week})
     competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
     competition_dict = filter_competition_id(competitions_pokerstar, competitions, competition_dict)
     return competition_dict
 
 #FUNTION USED BY initialize_competition_dict()
-def extract_all_competition_id(competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week):
+def extract_all_competition_id(trading,competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week):
     for competition in competitions_pokerstar:
         if competition not in competition_dict:
-            competition_dict = extract_1_competition_id(competition_dict, competition, soccer_id,datetime_in_a_week)
+            competition_dict = extract_1_competition_id(trading,competition_dict, competition, soccer_id,datetime_in_a_week)
     return competition_dict
 
 
 #CREATE THE DICTIONARY CONTAINING {COMPETITION NAME : COMPETITION ID}
-def initialize_competition_dict(filename,competitions_pokerstar, soccer_id,datetime_in_a_week):
+def initialize_competition_dict(trading,filename,competitions_pokerstar, soccer_id,datetime_in_a_week):
     try:
         competition_dict = open_json_file(filename)
     except:
         competition_dict = {}
-    competition_dict = extract_all_competition_id(competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week)
+    competition_dict = extract_all_competition_id(trading,competition_dict, competitions_pokerstar, soccer_id,datetime_in_a_week)
     save_json_file(filename, competition_dict)
     return competition_dict
 
@@ -198,7 +198,7 @@ def export_runners(market_books,market_dict,selection_dict):
 
 
 
-def load_dataframe(usr, psw, ap_key):
+def load_dataframe(competitions):
     #LOGIN IN THE API
     certificate_root='oddsmatcher/certificates/' #local position of my XRC certificates and secret key
     trading = betfairlightweight.APIClient(usr, psw, app_key=ap_key, certs=certificate_root,locale="italy")
@@ -221,9 +221,10 @@ def load_dataframe(usr, psw, ap_key):
     #This is given by scraperPS
     #DA AGGIUNGERE COME ARGOMENTO DELLA FUNZIONE!!!!! DA RETURN DI SCRAPERPS
     competitions_pokerstar=['Italia - Serie A','Italia - Serie B','Champions League','Europa League','Conference League','Inghilterra - Premier League','Spagna - La Liga','Germania - Bundesliga','Francia - Ligue 1','Portogallo - Primeira Liga']
+    competitions_pokerstar=competitions
     competitions_pokerstar=[i.replace(" - "," ") for i in competitions_pokerstar]
     memory_filename="competition_dict.json" #file where id competition ids are stored for minimizing the number of requests to the api
-    competition_dict=initialize_competition_dict(memory_filename,competitions_pokerstar, soccer_id,datetime_in_a_week)
+    competition_dict=initialize_competition_dict(trading,memory_filename,competitions_pokerstar,soccer_id,datetime_in_a_week)
     competition_ids=dict_to_list(competition_dict,competitions_pokerstar)
 
     #EVENTS ID
@@ -240,9 +241,8 @@ def load_dataframe(usr, psw, ap_key):
 
 
 if __name__ == "__main__":
-    print(load_dataframe(usr, psw, ap_key))
-
-
+    competitions=['Italia - Serie A' ,'Italia - Serie B' ,'Champions League' ,'Europa League' ,'Conference League' ,'Inghilterra - Premier League' ,'Spagna - La Liga' ,'Germania - Bundesliga' ,'Francia - Ligue 1' ,'Portogallo - Primeira Liga']
+    print(load_dataframe(competitions))
 
 
 

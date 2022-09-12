@@ -64,7 +64,7 @@ def extract_competition_id(url,headers,querystring):
 def t_timestamp(t):
 	t = t / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
 	#t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
-	t = datetime.utcfromtimestamp(t)
+	t = datetime.utcfromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
 	return t
 
 def team_league_date(json_object):
@@ -180,13 +180,12 @@ def dataframe_load():
 		dataset_uo = extract_odds(id, markets["under_over"],url_comp,headers, odds_UO25)						#THEN U25 O25
 		dataset_goal = extract_odds(id, markets["goal_nogoal"],url_comp,headers, odds_goal)						#THEN GOALNOGOAL
 		data_total = pd.concat([data_total, dataset_1x2, dataset_uo, dataset_goal], ignore_index=True)
-	return data_total
+	competitions = data_total.league.unique()
+	return data_total, competitions
 
 if __name__ == "__main__":
-	data=dataframe_load()
-	print(data.league.unique())
-
-
+	data, competitions=dataframe_load()
+	print(data)
 
 
 
