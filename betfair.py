@@ -7,7 +7,7 @@ import betfairlightweight
 import pandas as pd
 
 
-
+date_format='%d-%m-%Y %H:%M:%S'
 
 #USEFULL ONLY IN DEBUGGING----------------------------------------------------------------------------------------------------------------------------------------
 #pd.set_option('display.max_columns', None) #FOR DEBUG
@@ -129,7 +129,7 @@ def extract_market_catalogue(trading,event_id):
         market_id = market.market_id
         name = market.event.name
         date = market.event.open_date + datetime.timedelta(hours=2)
-        date = date.strftime('%d-%m-%Y %H:%M:%S')  ### TO DELEATE ###
+        #date = date.strftime(date_format)  ### TO DELEATE ###
         comp = market.competition.name
         for runner in market.runners:
             market_dict[str(market_id)] = { "event_name" : name,  "date" : date, "competition_name" : comp }
@@ -198,7 +198,7 @@ def export_runners(market_books,market_dict,selection_dict):
 
 
 
-def load_dataframe(competitions):
+'''def load_dataframe(competitions):
     #LOGIN IN THE API
     certificate_root='oddsmatcher/certificates/' #local position of my XRC certificates and secret key
     trading = betfairlightweight.APIClient(usr, psw, app_key=ap_key, certs=certificate_root,locale="italy")
@@ -238,14 +238,63 @@ def load_dataframe(competitions):
     market_books=export_market_book(trading,market_dict)
     all_runners=export_runners(market_books,market_dict,selection_dict)
     return(all_runners)
+'''
+
+
+def load_dataframe(competitions,date):
+    # LOGIN IN THE API
+    certificate_root = 'oddsmatcher/certificates/'  # local position of my XRC certificates and secret key
+    trading = betfairlightweight.APIClient(usr, psw, app_key=ap_key, certs=certificate_root, locale="italy")
+
+    # FOR OBVIOUS REASON MY AP_KEY AND CERTIFICATES ARE NOT UPLOADED ON GITHUB
+    # THE AP_KEY CAN BE REQUESTED FOR EVERYONE WHO HAVE A VERIFIED ACCOUNT ON BETFAIR
+    # THE CERTIFICATES ARE PRETTY EASY TO BEING PRODUCED
+    # REFERENCE MATERIAL IS WELL DESCRIBED
+    # https://docs.developer.betfair.com/display/1smk3cen4v3lu3yomq5qye0ni/Getting+Started
+
+    trading.login()
+
+    # SOCCER ID
+    results = trading.betting.list_event_types()
+    soccer_id = [result.event_type.id for result in results if
+                 result.event_type.name == "Soccer"]  # Betfair API wants id in a list
+
+    # COMPETITION ID
+    #datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
+    date = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+    datetime_in_a_week =date.strftime("%Y-%m-%dT%TZ")
+
+    # This is given by scraperPS
+    # DA AGGIUNGERE COME ARGOMENTO DELLA FUNZIONE!!!!! DA RETURN DI SCRAPERPS
+    #competitions_pokerstar = ['Italia - Serie A', 'Italia - Serie B', 'Champions League', 'Europa League',
+    #                          'Conference League', 'Inghilterra - Premier League', 'Spagna - La Liga',
+    #                         'Germania - Bundesliga', 'Francia - Ligue 1', 'Portogallo - Primeira Liga']
+    competitions_pokerstar = competitions
+    competitions_pokerstar = [i.replace(" - ", " ") for i in competitions_pokerstar]
+    memory_filename = "competition_dict.json"  # file where id competition ids are stored for minimizing the number of requests to the api
+    competition_dict = initialize_competition_dict(trading, memory_filename, competitions_pokerstar, soccer_id,
+                                                   datetime_in_a_week)
+    competition_ids = dict_to_list(competition_dict, competitions_pokerstar)
+
+    # EVENTS ID
+    events = request_event_list(trading, soccer_id, competition_ids)
+    event_id = extract_event(events)
+
+    # MARKET ID AND SELECTION_NAMES
+    selection_dict, market_dict = extract_market_catalogue(trading, event_id)
+
+    # MARKET BOOKS WITH THE FINAL DATA WE WANT
+    market_books = export_market_book(trading, market_dict)
+    all_runners = export_runners(market_books, market_dict, selection_dict)
+    all_runners = all_runners.sort_values(by='date')
+    return (all_runners)
 
 
 if __name__ == "__main__":
     competitions=['Italia - Serie A' ,'Italia - Serie B' ,'Champions League' ,'Europa League' ,'Conference League' ,'Inghilterra - Premier League' ,'Spagna - La Liga' ,'Germania - Bundesliga' ,'Francia - Ligue 1' ,'Portogallo - Primeira Liga']
-    print(load_dataframe(competitions))
-
-
-
+    date='2022-10-03 21:00:00'
+    data = load_dataframe(competitions,date)
+    print(data)
 
 
 

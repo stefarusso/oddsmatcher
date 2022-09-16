@@ -13,38 +13,50 @@ def open_json_file(filename):
 		json_data = json.load(json_file)
 	return json_data
 
+def save_pandas(data,filename):
+	data.to_csv(filename, index=False)
+
+def save_list(filename,lista):
+	save_json_file(filename, json.dumps(lista.tolist()))
+def update_pokerstar(pokerstar_save_filename,competitions_save_filename):
+	data_pokerstar, competitions = ps.dataframe_load()
+	save_pandas(data_pokerstar, pokerstar_save_filename)
+	save_list(competitions_save_filename, competitions)
+	return data_pokerstar, competitions
+
+def open_list(filename):
+	comps_ps = open_json_file(filename)
+	comps_ps = json.loads(comps_ps)
+	return comps_ps
 
 
-#data_pokerstar,competitions=ps.dataframe_load()
-#data_pokerstar['date'] = pd.to_datetime(data_pokerstar['date'], format='%Y-%m-%d %H:%M:%S') #INSERIRE IN SCARAPERP#S
-#data_pokerstar = data_pokerstar.sort_values(by='date')
-#data_pokerstar.to_csv("pokerstar.csv",index=False)
-#save_json_file("competitions.json",json.dumps(competitions.tolist()))
-
-data_pokerstar=pd.read_csv('pokerstar.csv')
-comps_ps=open_json_file("competitions.json")
-comps_ps=json.loads(comps_ps)
+pokerstar_save_filename="pokerstar.csv"
+competitions_save_filename="competitions.json"
+betfair_save_filename="betfair.csv"
 
 
-#competitions=['Italia - Serie A' ,'Italia - Serie B' ,'Champions League' ,'Europa League' ,'Conference League' ,'Inghilterra - Premier League' ,'Spagna - La Liga' ,'Germania - Bundesliga' ,'Francia - Ligue 1' ,'Portogallo - Primeira Liga']
-#print(competitions)
-#print(type(competitions))
 
-data_betfair=betfair.load_dataframe(comps_ps)
-#data_betfair['date'] = pd.to_datetime(data_betfair['date'], format='%Y-%m-%d %H:%M:%S') #INSERIRE IN SCARAPERPS
+#request pokerstar data
+data_pokerstar,competitions=update_pokerstar(pokerstar_save_filename,competitions_save_filename)
 
-data_betfair['date'] = pd.to_datetime(data_betfair['date'], format='%d-%m-%Y %H:%M:%S') #INSERIRE IN SCARAPERPS
-data_betfair= data_betfair.sort_values(by='date')
+#read HD saved files
+open_list(competitions_save_filename)
+data_pokerstar=pd.read_csv(pokerstar_save_filename)
+
+max_date=data_pokerstar["date"].max()
+#request betfair data                                         AFTER INCLUDE IN update_pokerstar
+data_betfair=betfair.load_dataframe(competitions,max_date)
 data_betfair.to_csv("betfair.csv",header=False,index=False)
 
+
 #print("test competizioni")
-#print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
-#print("---")
+print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
+print("---")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 
-print(data_pokerstar[data_pokerstar.league=='Germania - Bundesliga']["date"].min())
-print(data_pokerstar[data_pokerstar.league=='Germania - Bundesliga']["date"].max())
+print(data_pokerstar[data_pokerstar.league=='Inghilterra - Premier League']["date"].min())
+print(data_pokerstar[data_pokerstar.league=='Inghilterra - Premier League']["date"].max())
 
-print(data_betfair[data_betfair.league=='Germania - Bundesliga 2']["date"].min())
-print(data_betfair[data_betfair.league=='Germania - Bundesliga 2']["date"].max())
+print(data_betfair[data_betfair.league=='Inghilterra - Premier League']["date"].min())
+print(data_betfair[data_betfair.league=='Inghilterra - Premier League']["date"].max())
 

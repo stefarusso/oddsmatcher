@@ -6,6 +6,7 @@ import pandas as pd
 pd.set_option('display.max_columns', None) #FOR DEBUG
 #pd.set_option('display.max_row', None) #FOR DEBUG
 
+date_format='%d-%m-%Y %H:%M:%S'
 def get_cookie(URL):
 	with sync_playwright() as p:
 		#browser = p.chromium.launch(headless=None, slow_mo=50)   #for debugging
@@ -64,7 +65,8 @@ def extract_competition_id(url,headers,querystring):
 def t_timestamp(t):
 	t = t / 1000 + 7200  # ms -> s   and then +2h since time is in unixstamp UTC, (I live in Rome UTC+2)
 	#t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')  # from timestamp to date/time
-	t = datetime.utcfromtimestamp(t).strftime('%d-%m-%Y %H:%M:%S')
+	#t = datetime.utcfromtimestamp(t).strftime(date_format)
+	t = datetime.utcfromtimestamp(t)
 	return t
 
 def team_league_date(json_object):
@@ -181,11 +183,12 @@ def dataframe_load():
 		dataset_goal = extract_odds(id, markets["goal_nogoal"],url_comp,headers, odds_goal)						#THEN GOALNOGOAL
 		data_total = pd.concat([data_total, dataset_1x2, dataset_uo, dataset_goal], ignore_index=True)
 	competitions = data_total.league.unique()
+	data_total = data_total.sort_values(by='date')
 	return data_total, competitions
 
 if __name__ == "__main__":
 	data, competitions=dataframe_load()
-	print(data)
+	print(type(data["date"][0]))
 
 
 
