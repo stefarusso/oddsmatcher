@@ -6,6 +6,7 @@ Requirement
 pip install playwright
 playwright install
 pip install betfairlightweight
+pip install python-Levenshtein
 ```
 #### POKERSTARS SCRAPER
 

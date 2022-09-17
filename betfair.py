@@ -1,11 +1,10 @@
 from credentials import ap_key, usr, psw #For obvious reason those are not uploaded on github ;)
 import requests
 import json
-import scraperPS as sps
 import datetime
 import betfairlightweight
 import pandas as pd
-
+from Levenshtein import jaro_winkler as jaro
 
 date_format='%d-%m-%Y %H:%M:%S'
 
@@ -59,10 +58,15 @@ def list_to_dataframe(List,col_names=['league', 'home_team', 'away_team', 'date'
 
 #FUNTION USED BY initialize_competition_dict()
 #CHECK WOMAN (F) F=Femminile COMPETITIONS
+#CHECK IF THERE ARE MULTIPLE COMPETITIONS WITH THE SAME NAME USING python-Levenshtein jaro_wrinkler()
 def filter_competition_id(pokerstar_name,competitions,dictionary):
+    levenstein_dict={}
     for object in competitions :
         if not "(F)" in object.competition.name:
-            dictionary[pokerstar_name]=object.competition.id
+            levenstein_dict[object.competition.id]=jaro(pokerstar_name,object.competition.name)
+    if len(levenstein_dict):
+        correct_id=max(levenstein_dict,key=levenstein_dict.get)  #distance ->  1.0 same word, 0.0 complete different
+        dictionary[pokerstar_name] = correct_id
     return dictionary
 
 #FUNTION USED BY initialize_competition_dict()
@@ -198,48 +202,6 @@ def export_runners(market_books,market_dict,selection_dict):
 
 
 
-'''def load_dataframe(competitions):
-    #LOGIN IN THE API
-    certificate_root='oddsmatcher/certificates/' #local position of my XRC certificates and secret key
-    trading = betfairlightweight.APIClient(usr, psw, app_key=ap_key, certs=certificate_root,locale="italy")
-    
-    #FOR OBVIOUS REASON MY AP_KEY AND CERTIFICATES ARE NOT UPLOADED ON GITHUB
-    # THE AP_KEY CAN BE REQUESTED FOR EVERYONE WHO HAVE A VERIFIED ACCOUNT ON BETFAIR
-    #THE CERTIFICATES ARE PRETTY EASY TO BEING PRODUCED
-    #REFERENCE MATERIAL IS WELL DESCRIBED
-    #https://docs.developer.betfair.com/display/1smk3cen4v3lu3yomq5qye0ni/Getting+Started
-    
-    trading.login()
-    
-    #SOCCER ID
-    results  = trading.betting.list_event_types()
-    soccer_id=[result.event_type.id for result in results if result.event_type.name=="Soccer"] # Betfair API wants id in a list
-    
-    #COMPETITION ID
-    datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
-
-    #This is given by scraperPS
-    #DA AGGIUNGERE COME ARGOMENTO DELLA FUNZIONE!!!!! DA RETURN DI SCRAPERPS
-    competitions_pokerstar=['Italia - Serie A','Italia - Serie B','Champions League','Europa League','Conference League','Inghilterra - Premier League','Spagna - La Liga','Germania - Bundesliga','Francia - Ligue 1','Portogallo - Primeira Liga']
-    competitions_pokerstar=competitions
-    competitions_pokerstar=[i.replace(" - "," ") for i in competitions_pokerstar]
-    memory_filename="competition_dict.json" #file where id competition ids are stored for minimizing the number of requests to the api
-    competition_dict=initialize_competition_dict(trading,memory_filename,competitions_pokerstar,soccer_id,datetime_in_a_week)
-    competition_ids=dict_to_list(competition_dict,competitions_pokerstar)
-
-    #EVENTS ID
-    events=request_event_list(trading,soccer_id,competition_ids)
-    event_id=extract_event(events)
-
-    #MARKET ID AND SELECTION_NAMES
-    selection_dict,market_dict=extract_market_catalogue(trading,event_id)
-
-    #MARKET BOOKS WITH THE FINAL DATA WE WANT
-    market_books=export_market_book(trading,market_dict)
-    all_runners=export_runners(market_books,market_dict,selection_dict)
-    return(all_runners)
-'''
-
 
 def load_dataframe(competitions,date):
     # LOGIN IN THE API
@@ -291,7 +253,7 @@ def load_dataframe(competitions,date):
 
 
 if __name__ == "__main__":
-    competitions=['Italia - Serie A' ,'Italia - Serie B' ,'Champions League' ,'Europa League' ,'Conference League' ,'Inghilterra - Premier League' ,'Spagna - La Liga' ,'Germania - Bundesliga' ,'Francia - Ligue 1' ,'Portogallo - Primeira Liga']
+    competitions=['Italia - Serie A' ,'Germania - Bundesliga' ,'Francia - Ligue 1' ]
     date='2022-10-03 21:00:00'
     data = load_dataframe(competitions,date)
     print(data)

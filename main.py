@@ -35,6 +35,11 @@ competitions_save_filename="competitions.json"
 betfair_save_filename="betfair.csv"
 
 
+#ONLY
+non_interactive_login_url='https://identitysso-cert.betfair.it/api/certlogin'    #Just for get the session token SSOID on the italian website
+certificates=('certificates/betfair_api.crt','certificates/betfair_api.key') #local position of my XRC certificates and secret key
+print(betfair.get_ssoid(betfair.usr,betfair.psw,betfair.ap_key,certificates,non_interactive_login_url))
+print(betfair.ap_key)
 
 #request pokerstar data
 data_pokerstar,competitions=update_pokerstar(pokerstar_save_filename,competitions_save_filename)
