@@ -108,7 +108,7 @@ def dict_to_list(competition_dict,competitions_pokerstar):
         try:
             out_list.append(competition_dict[comp])
         except KeyError as err:
-            print(comp + " Not found on Betfair !!!")
+            print(comp + " Not found on Betfair Catalogue !!!")
     return out_list
 
 #FORMATTING THE EVENT ID LIST AS A LIST OF STRINGS
@@ -253,7 +253,7 @@ def load_dataframe(competitions,date):
 
 
 if __name__ == "__main__":
-    competitions=['Italia - Serie A' ,'Germania - Bundesliga' ,'Francia - Ligue 1' ]
+    competitions=['Spagna - La Liga' ,'Portogallo - Primeira Liga' ,'Olanda - Eredivisie' ]
     date='2022-10-03 21:00:00'
     data = load_dataframe(competitions,date)
     print(data)
