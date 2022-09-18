@@ -80,14 +80,22 @@ print(data_pokerstar.info())
 print("---------------------------LINKING")
 first_comp=data_pokerstar["league"].unique()[0]
 print(first_comp)
-tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITION
-dates=tmp_poker["date"].unique() #LISTS OF EVENTS
+
+tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
+tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
+
+print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
+#CYCLE OVER HOURS
+dates=tmp_betfair["date"].unique() #LISTS OF EVENTS
 data_1=dates[0]
 print(data_1)
-events=tmp_poker.loc[(tmp_poker["date"]==data_1,["home_team","away_team"])] # BISOGNA ESTRARRE LE SINGLE COPPIE
-home_teams=events["home_team"].unique() #BISOGNA FARE UNA COSA TIPO QUESTA MA SULLA COPPIA
+events=tmp_betfair.loc[(tmp_betfair["date"]==data_1,["home_team","away_team"])].value_counts() # ALL COUPLES IN THAT HOUR
+print(events.keys()[0][0]) #1° couple, home_team
+teams_dict={} # {betfair_team_name:pokerstar_team_name} TO SAVE IF THERE ARE NAME DIFFERENT
+if events.keys()[0][0] in tmp_poker.loc[tmp_poker["date"]==data_1,"home_team"].values:
+	teams_dict[events.keys()[0][0]]=events.keys()[0][0]
+	print(tmp_poker.loc[ tmp_poker["home_team"]==events.keys()[0][0]].loc[tmp_poker["date"]==data_1]) #slice of tmp_poker in data_1 and with home_team 0
+print(teams_dict)
 
-#print(type(datetime.datetime.strptime(data_1, '%Y-%m-%d %H:%M:%S')))
 
-tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
-#print(tmp_betfair[tmp_betfair["date"]==data_1])
+
