@@ -60,14 +60,22 @@ def list_to_dataframe(List,col_names=['league', 'home_team', 'away_team', 'date'
 #CHECK WOMAN (F) F=Femminile COMPETITIONS
 #CHECK IF THERE ARE MULTIPLE COMPETITIONS WITH THE SAME NAME USING python-Levenshtein jaro_wrinkler()
 def filter_competition_id(pokerstar_name,competitions,dictionary):
-    levenstein_dict={}
+    levenstein_dict= {}
     for object in competitions :
         if not "(F)" in object.competition.name:
-            levenstein_dict[object.competition.id]=jaro(pokerstar_name,object.competition.name)
-    if len(levenstein_dict):
-        correct_id=max(levenstein_dict,key=levenstein_dict.get)  #distance ->  1.0 same word, 0.0 complete different
-        dictionary[pokerstar_name] = correct_id
+            levenstein_dict[object.competition.name]={"jaro":jaro(pokerstar_name,object.competition.name),"pokerstar_name":pokerstar_name,"betfair_name":object.competition.name,"id":object.competition.id}
+    if len(levenstein_dict): #if there are more name for the same comp
+        test_max = max(i["jaro"] for i in levenstein_dict.values())
+        correct_object={}
+        for comp in levenstein_dict.values():
+            if comp["jaro"] == test_max:
+                correct_object=comp
+        #distance ->  1.0 same word, 0.0 complete different
+        dictionary[correct_object["pokerstar_name"]] = {"id":correct_object["id"],"betfair_name": correct_object["betfair_name"]}
+    else: #zero value finded
+        print(pokerstar_name," NOT FOUND ON BETFAIR")
     return dictionary
+
 
 #FUNTION USED BY initialize_competition_dict()
 #API REQUEST OF THE COMPETITION ID
@@ -102,11 +110,12 @@ def request_event_list(trading,soccer_id,competition_id):
     return events
 
 #FROM LIST OF STRING FROM scraperPS TO A LIST OF STRING WITH CORRECT COMPETITION ID
+
 def dict_to_list(competition_dict,competitions_pokerstar):
     out_list=[]
     for comp in competitions_pokerstar:
         try:
-            out_list.append(competition_dict[comp])
+            out_list.append(competition_dict[comp]["id"])
         except KeyError as err:
             print(comp + " Not found on Betfair Catalogue !!!")
     return out_list
@@ -119,7 +128,7 @@ def extract_event(event_list):
     return event_l
 
 #FUNCTION WHO EXCTRACT THE MARKET IDS FOR THE EVENT WE WONT
-def extract_market_catalogue(trading,event_id):
+def extract_market_catalogue(trading,event_id,competition_dict):
     markets_set = ["MATCH_ODDS", "OVER_UNDER_25", "BOTH_TEAMS_TO_SCORE"]
     betfair_to_pokerstars = {'Over 2,5 goal': 'Over 2.5', 'Under 2,5 goal': 'Under 2.5', 'Sì': 'GOAL', 'No': 'NOGOAL'}
     market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=event_id,market_type_codes=markets_set)
@@ -133,8 +142,13 @@ def extract_market_catalogue(trading,event_id):
         market_id = market.market_id
         name = market.event.name
         date = market.event.open_date + datetime.timedelta(hours=2)
-        #date = date.strftime(date_format)  ### TO DELEATE ###
-        comp = market.competition.name #<--------------------------------------------------MODIFICARE!!!!!!
+        #REALLY BAD SOLUTION, IF THE NAME IS AT THE END OF THE LIST IT TAKES O(n)<-------------------------------------
+        for key,value in competition_dict.items():
+            if value["betfair_name"]==market.competition.name:
+                comp=key
+                break
+            else:
+                print("HUSTON WE HAVE A MASSIVE PILE OF SHIT, ",market.competition.name," IS NOT IN COMPETITION_DICT!!!!!")
         for runner in market.runners:
             market_dict[str(market_id)] = { "event_name" : name,  "date" : date, "competition_name" : comp }
             selection_name=runner.runner_name
@@ -197,7 +211,7 @@ def export_runners(market_books,market_dict,selection_dict):
         for runner in market.runners:
             runner_lay=extract_runner_lay(runner,market_id,market_dict,selection_dict)
             #export_list.append(runner_lay)
-            export_dataframe = pd.concat([export_dataframe, list_to_dataframe(runner_lay)], ignore_index=True)   
+            export_dataframe = pd.concat([export_dataframe, list_to_dataframe(runner_lay)], ignore_index=True)
     return export_dataframe
 
 
@@ -243,7 +257,7 @@ def load_dataframe(competitions,date):
     event_id = extract_event(events)
 
     # MARKET ID AND SELECTION_NAMES
-    selection_dict, market_dict = extract_market_catalogue(trading, event_id)
+    selection_dict, market_dict = extract_market_catalogue(trading, event_id,competition_dict)
     # MARKET BOOKS WITH THE FINAL DATA WE WANT
     market_books = export_market_book(trading, market_dict)
     all_runners = export_runners(market_books, market_dict, selection_dict)
@@ -256,8 +270,3 @@ if __name__ == "__main__":
     date='2022-10-03 21:00:00'
     data = load_dataframe(competitions,date)
     print(data)
-
-
-
-
-
