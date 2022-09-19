@@ -39,7 +39,7 @@ def request_dataframe(pokerstar_save_filename,competitions_save_filename,betfair
 	max_date = data_pokerstar["date"].max()
 	# request betfair data                                         AFTER INCLUDE IN update_pokerstar
 	data_betfair = betfair.load_dataframe(competitions, max_date)
-	data_betfair.to_csv(betfair_save_filename, index=False)
+	data_betfair.to_csv(betfair_save_filename,header=True, index=False)
 	data_betfair = pd.read_csv(betfair_save_filename)
 	return data_pokerstar,data_betfair,competitions
 
@@ -73,23 +73,38 @@ print("---")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 print('-------------------------------')
 print(data_pokerstar.info())
-
+print(data_pokerstar.league.unique())
 #---------------------------------------------------------------------------
 #START AT LINKING THE TWO DATAFRAME
 #JUST ONE COMPETITION
+
+#
+#
+# BISOGNA AGGIUNGERE POKER_NAME AL COMPETITION_DICT
+#
 print("---------------------------LINKING")
-first_comp=data_pokerstar["league"].unique()[0]
-print(first_comp)
+print("betfair:",len(data_betfair["league"]),"    pokerstar:",len(data_pokerstar["league"]))
+#if len(data_betfair["league"]) < len(data_pokerstar["league"]): #parte dadataframe che ha meno entry
+
+first_comp=data_betfair["league"].unique()[0]
+print("first competition:",first_comp)
 
 tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
 tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
-
 print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
+#if len ==0 break
+# start with the one with less entry
+#if len(tmp_betfair["league"]) < len(tmp_poker["league"]): #parte dadataframe che ha meno entry
+
+
 #CYCLE OVER HOURS
 dates=tmp_betfair["date"].unique() #LISTS OF EVENTS
 data_1=dates[0]
 print(data_1)
+
+
 events=tmp_betfair.loc[(tmp_betfair["date"]==data_1,["home_team","away_team"])].value_counts() # ALL COUPLES IN THAT HOUR
+#CYCLE OVER COUPLES IF THERE ARE MORE THAN ONE EVENT AT THAT TIME
 print(events.keys()[0][0]) #1° couple, home_team
 teams_dict={} # {betfair_team_name:pokerstar_team_name} TO SAVE IF THERE ARE NAME DIFFERENT
 if events.keys()[0][0] in tmp_poker.loc[tmp_poker["date"]==data_1,"home_team"].values:

@@ -134,7 +134,7 @@ def extract_market_catalogue(trading,event_id):
         name = market.event.name
         date = market.event.open_date + datetime.timedelta(hours=2)
         #date = date.strftime(date_format)  ### TO DELEATE ###
-        comp = market.competition.name
+        comp = market.competition.name #<--------------------------------------------------MODIFICARE!!!!!!
         for runner in market.runners:
             market_dict[str(market_id)] = { "event_name" : name,  "date" : date, "competition_name" : comp }
             selection_name=runner.runner_name
@@ -244,7 +244,6 @@ def load_dataframe(competitions,date):
 
     # MARKET ID AND SELECTION_NAMES
     selection_dict, market_dict = extract_market_catalogue(trading, event_id)
-
     # MARKET BOOKS WITH THE FINAL DATA WE WANT
     market_books = export_market_book(trading, market_dict)
     all_runners = export_runners(market_books, market_dict, selection_dict)
@@ -253,7 +252,7 @@ def load_dataframe(competitions,date):
 
 
 if __name__ == "__main__":
-    competitions=['Spagna - La Liga' ,'Portogallo - Primeira Liga' ,'Olanda - Eredivisie' ]
+    competitions=['UEFA Nations League','Inghilterra - Premier League','Italia - Serie A','Olanda - Eredivisie','Champions League','Europa League']
     date='2022-10-03 21:00:00'
     data = load_dataframe(competitions,date)
     print(data)
