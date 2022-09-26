@@ -67,15 +67,16 @@ def filter_competition_id(pokerstar_name,competitions,competition_dict_id,compet
     if len(levenstein_dict): #if there are more name for the same comp
         test_max = max(i["jaro"] for i in levenstein_dict.values())
         correct_object={}
-        for comp in levenstein_dict.values():
+        for comp_name,comp in levenstein_dict.items():
             if comp["jaro"] == test_max:
                 correct_object=comp
+                betfair_name=comp_name
                 break
         #distance ->  1.0 same word, 0.0 complete different
         competition_dict_id[correct_object["pokerstar_name"]] = correct_object["id"]
-        competition_dict_name[object.competition.name] = pokerstar_name
+        competition_dict_name[betfair_name] = pokerstar_name
     else: #zero value finded
-        print(pokerstar_name," NOT FOUND ON BETFAIR")
+        print(pokerstar_name," Not Found on Betfair")
     return competition_dict_id,competition_dict_name
 
 
@@ -307,7 +308,8 @@ def load_dataframe(competitions,date):
 # competition_dict_id          save the pokerstar_name:competition_id
 # competition_dict_name        save the betfair_name:pokerstar_name
 if __name__ == "__main__":
-    competitions=['UEFA Nations League','Portogallo - Primeira Liga','Italia - Serie B']
+    competitions=['UEFA Nations League','Portogallo - Primeira Liga','Italia - Serie B','Germania - Bundesliga','Spagna - La Liga','Francia - Ligue 1','Inghilterra - Premier League','Italia - Serie A','Olanda - Eredivisie','Champions League']
+    #competitions=['Germania - Bundesliga','Portogallo - Primeira Liga','Italia - Serie B']
     date='2022-10-03 21:00:00'
     data = load_dataframe(competitions,date)
     print(data)
