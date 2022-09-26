@@ -52,6 +52,9 @@ def update_dataframes(pokerstar_save_filename,competitions_save_filename,betfair
 		data_pokerstar, data_betfair, competitions = request_dataframe(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
 	return data_pokerstar, data_betfair, competitions
 
+
+# START OF THE PROGRAM 
+
 pokerstar_save_filename="pokerstar.csv"
 competitions_save_filename="competitions.json"
 betfair_save_filename="betfair.csv"
@@ -63,27 +66,26 @@ print(betfair.get_ssoid(betfair.usr,betfair.psw,betfair.ap_key,certificates,non_
 print(betfair.ap_key)
 
 #UPDATE THE CSV
-#data_pokerstar,data_betfair,competitions=request_dataframe(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
-#ONLY READ THE EXISTING CSV
+#ONLY FOR DEBUG    <------------------------------------------------------------------ MODIFY IN THE FINAL VERSION 
+#IT'S ONLY READ THE EXISTING CSV AND UPDATE ONLY IF IT DOESN'T EXIST THE FILE
+
 data_pokerstar,data_betfair,competitions=update_dataframes(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
 
 #print("test competizioni")
+print("pokerstars competitions scaraped:")
 print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
 print("---")
+print("betfair competitions scaraped:")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 print('-------------------------------')
-print(data_pokerstar.info())
 print(data_pokerstar.league.unique())
 #---------------------------------------------------------------------------
 #START AT LINKING THE TWO DATAFRAME
 #JUST ONE COMPETITION
 
-#
-#
-# BISOGNA AGGIUNGERE POKER_NAME AL COMPETITION_DICT
-#
-print("---------------------------LINKING")
-print("betfair:",len(data_betfair["league"]),"    pokerstar:",len(data_pokerstar["league"]))
+print("--------------------------------------------LINKING PHASE")
+print("BETFAIR:",len(data_betfair["league"]),"    POKERSTARS:",len(data_pokerstar["league"]),  "         #")
+print("--------------------------------------------")
 #if len(data_betfair["league"]) < len(data_pokerstar["league"]): #parte dadataframe che ha meno entry
 
 first_comp=data_betfair["league"].unique()[0]
