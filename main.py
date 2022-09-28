@@ -142,19 +142,28 @@ event1_bf=events_bf.keys()[0] # (home,away)
 #FIND BEST CLOSURE
 distance_home={}
 distance_away={}
+#STRADA GIUSTA CREA DATAFRAME
+'''events_ps=events_ps.keys().to_frame(index=False)
+events_bf=events_bf.keys().to_frame(index=False)
+for event_ps in events_ps.keys():
+	distance_home[event_ps[0]]=jaro(event1_bf[0],event_ps[0])
+	distance_away[event_ps[1]]=jaro(event1_bf[1],event_ps[1])'''
+home_name=max(distance_home, key=distance_home.get)
+away_name=max(distance_away, key=distance_away.get)
 for event_ps in events_ps.keys():
 	distance_home[event_ps[0]]=jaro(event1_bf[0],event_ps[0])
 	distance_away[event_ps[1]]=jaro(event1_bf[1],event_ps[1])
 home_name=max(distance_home, key=distance_home.get)
 away_name=max(distance_away, key=distance_away.get)
-print(home_name)
+#print(home_name)
 #print(event1_bf[0],distance_home)
 #print(event1_bf[1],distance_away)
 
 #FIND INDEX OF THE home_name AND away_name ON THE SUBDATAFRAME
 
 
-
+events_ps=events_ps.keys().to_frame(index=False)
+print(events_ps["home_team"])
 
 '''
 #LOOP OVER DATETIME
