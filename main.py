@@ -3,6 +3,7 @@ import betfair as betfair
 import pandas as pd
 import datetime
 import json
+from Levenshtein import jaro_winkler as jaro
 pd.set_option('display.max_row', None) #FOR DEBUG
 
 def save_json_file(filename,object):
@@ -13,6 +14,7 @@ def open_json_file(filename):
 	with open(filename) as json_file:
 		json_data = json.load(json_file)
 	return json_data
+
 
 def save_pandas(data,filename):
 	data.to_csv(filename, index=False)
@@ -84,23 +86,62 @@ print(data_pokerstar.league.unique())
 #JUST ONE COMPETITION
 
 print("--------------------------------------------LINKING PHASE")
-print("BETFAIR:",len(data_betfair["league"]),"    POKERSTARS:",len(data_pokerstar["league"]),  "         #")
+print("BETFAIR LEAGUES:",len(data_betfair["league"]),"    POKERSTARS LEAGUES:",len(data_pokerstar["league"]),  "         #")
 print("--------------------------------------------")
 #if len(data_betfair["league"]) < len(data_pokerstar["league"]): #parte dadataframe che ha meno entry
 
+#initialize the final dataframe
+final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
+
+#initialize dict_teams. it links the pokerstar team name to the betfair team name. and it is save so every epoch the program became faster 
+def initialize_dict_teams(filename):
+    try:
+        dict_teams = open_json_file(filename)
+    except:
+        dict_teams = {}
+    save_json_file(filename, dict_teams)
+    return dict_teams
+
+dict_team_filename='dict_teams.json'
+dict_teams=initialize_dict_teams(dict_team_filename)
+
+#INSERT LOOP OVER data_betfair["league"].unique()
 first_comp=data_betfair["league"].unique()[0]
 print("first competition:",first_comp)
 
+#create temporary dataframe with league
 tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
 tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
 print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
-#if len ==0 break
-# start with the one with less entry
-#if len(tmp_betfair["league"]) < len(tmp_poker["league"]): #parte dadataframe che ha meno entry
+tmp_len_ps=len(tmp_poker)
+tmp_len_bf=len(tmp_betfair)
+#add if condition to use as dataframe the smallest len1 < len2 <-----------------------------
+#in this case they are the same normally betfair is smaller
 
 
-#CYCLE OVER HOURS
+dates=tmp_betfair["date"].unique()
+#LOOP OVER DATES<-------------------------
+#for debug only 1
+date_1=dates[0]
+print(date_1)
+events_bf = tmp_betfair.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
+events_ps = tmp_poker.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
+#insert check IF len<len2: <----------------------------------
+
+#LOOP OVER EVENTS<----------------------
+event1_bf=events_bf.keys()[0] # (home,away)
+
+#first home-home
+distance_home={}
+for event_ps in events_ps.keys():
+	distance_home[event_ps[0]]=jaro(event1_bf[0],event_ps[0])
+print(event1_bf[0],distance_home)
+
+
+'''
+#LOOP OVER DATETIME
 dates=tmp_betfair["date"].unique() #LISTS OF EVENTS
+#for testing <-------------------------------------------
 data_1=dates[0]
 print(data_1)
 
@@ -112,7 +153,7 @@ teams_dict={} # {betfair_team_name:pokerstar_team_name} TO SAVE IF THERE ARE NAM
 if events.keys()[0][0] in tmp_poker.loc[tmp_poker["date"]==data_1,"home_team"].values:
 	teams_dict[events.keys()[0][0]]=events.keys()[0][0]
 	print(tmp_poker.loc[ tmp_poker["home_team"]==events.keys()[0][0]].loc[tmp_poker["date"]==data_1]) #slice of tmp_poker in data_1 and with home_team 0
-print(teams_dict)
+print(teams_dict)'''
 
 
 
