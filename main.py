@@ -126,16 +126,34 @@ date_1=dates[0]
 print(date_1)
 events_bf = tmp_betfair.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
 events_ps = tmp_poker.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
+print("---------------------")
+print("pokerstar sub_dataframe:")
+print(events_ps)
+print("-----")
+print("betfair sub_dataframe:")
+print(events_bf)
+print("----------------------")
 #insert check IF len<len2: <----------------------------------
+
 
 #LOOP OVER EVENTS<----------------------
 event1_bf=events_bf.keys()[0] # (home,away)
 
-#first home-home
+#FIND BEST CLOSURE
 distance_home={}
+distance_away={}
 for event_ps in events_ps.keys():
 	distance_home[event_ps[0]]=jaro(event1_bf[0],event_ps[0])
-print(event1_bf[0],distance_home)
+	distance_away[event_ps[1]]=jaro(event1_bf[1],event_ps[1])
+home_name=max(distance_home, key=distance_home.get)
+away_name=max(distance_away, key=distance_away.get)
+print(home_name)
+#print(event1_bf[0],distance_home)
+#print(event1_bf[1],distance_away)
+
+#FIND INDEX OF THE home_name AND away_name ON THE SUBDATAFRAME
+
+
 
 
 '''
