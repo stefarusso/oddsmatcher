@@ -9,6 +9,9 @@ pd.set_option('display.max_row', None) #FOR DEBUG
 def save_json_file(filename,object):
 	with open(filename, 'w') as outfile:
 		json.dump(object, outfile,indent=2)
+def save_json_file(filename,object):
+	with open(filename, 'w') as outfile:
+		json.dump(object, outfile,indent=2)
 
 def open_json_file(filename):
 	with open(filename) as json_file:
@@ -134,36 +137,54 @@ print("betfair sub_dataframe:")
 print(events_bf)
 print("----------------------")
 #insert check IF len<len2: <----------------------------------
+#start from the short one
 
 
 #LOOP OVER EVENTS<----------------------
-event1_bf=events_bf.keys()[0] # (home,away)
+def find_min_distance(event_ref,events_obs):
+	# event_ref is the single event use as reference PANDAS SERIES only one line
+	# events_obs is the DATAFRAME with all the events of other tmp dataframe
+	distance_home = {}
+	distance_away = {}
+	for event in events_obs.iloc:
+		distance_home[event["home_team"]] = jaro(event_ref["home_team"], event["home_team"])
+		distance_away[event["away_team"]] = jaro(event_ref["away_team"], event["away_team"])
+	home_name = max(distance_home, key=distance_home.get)
+	away_name = max(distance_away, key=distance_away.get)
+	return home_name,away_name
 
-#FIND BEST CLOSURE
-distance_home={}
-distance_away={}
-#STRADA GIUSTA CREA DATAFRAME
-'''events_ps=events_ps.keys().to_frame(index=False)
-events_bf=events_bf.keys().to_frame(index=False)
-for event_ps in events_ps.keys():
-	distance_home[event_ps[0]]=jaro(event1_bf[0],event_ps[0])
-	distance_away[event_ps[1]]=jaro(event1_bf[1],event_ps[1])'''
-home_name=max(distance_home, key=distance_home.get)
-away_name=max(distance_away, key=distance_away.get)
-for event_ps in events_ps.keys():
-	distance_home[event_ps[0]]=jaro(event1_bf[0],event_ps[0])
-	distance_away[event_ps[1]]=jaro(event1_bf[1],event_ps[1])
-home_name=max(distance_home, key=distance_home.get)
-away_name=max(distance_away, key=distance_away.get)
-#print(home_name)
-#print(event1_bf[0],distance_home)
-#print(event1_bf[1],distance_away)
+#SUBDATAFRAMES
+events_ps=events_ps.keys().to_frame(index=False) #PANDAS SERIES to DATAFRAME
+events_bf=events_bf.keys().to_frame(index=False) #PANDAS SERIES to DATAFRAME
+
+
+#CHECK WHAT IS THE SHORT REFERENCE DATASET <-----------------------
+ref_events=events_bf
+obs_events=events_ps
+
+#ITERATE OVER events_ps <------ REFERENCE BETFAIR
+event1_bf=ref_events.iloc[0] #PANDAS SERIES, HAS 2 COLUMN : home_team, away_team
+home_name,away_name=find_min_distance(event1_bf,obs_events)
 
 #FIND INDEX OF THE home_name AND away_name ON THE SUBDATAFRAME
+home_index=obs_events["home_team"].loc[lambda x: x==home_name].index
+away_index=obs_events["away_team"].loc[lambda x: x==away_name].index
+if home_index==away_index:
+	#BISOGNA AGGIUNGERE IF CHECK SE REF=BETFAIR, PUO CAPITARE SUCCEDA l'OPPOSTO. DIZIONARIO DEVE SEMPRE ESSERE NELLA DIREZIONE BETFAIR:POKERSTAR<-----------------------------------
+	dict_teams[event1_bf["home_team"]] = home_name
+	dict_teams[event1_bf["away_team"]] = away_name
+	save_json_file(dict_team_filename,dict_teams)
+	#CREATE NEW LINE IN THE FINAL DATAFRAME
+
+	#REMOVE LINE IN SUBDATAFRAME
+
+else:
+	#PRINT BOTH INDEX FROM SUBSETS
+	print("")
+	#ASK IF WE NEED TO IGNORE THE ENTRY
 
 
-events_ps=events_ps.keys().to_frame(index=False)
-print(events_ps["home_team"])
+
 
 '''
 #LOOP OVER DATETIME
