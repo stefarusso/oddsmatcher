@@ -84,10 +84,11 @@ def filter_competition_id(pokerstar_name,competitions,competition_dict_id,compet
 
 #FUNTION USED BY initialize_competition_dict()
 #API REQUEST OF THE COMPETITION ID
-def extract_1_competition_id(trading,competition_dict_id,competition_dict_name,competitions_pokerstar,soccer_id,datetime_in_a_week):
-    competition_filter = betfairlightweight.filters.market_filter(event_type_ids=soccer_id,text_query=competitions_pokerstar,market_start_time={'to': datetime_in_a_week})
+def extract_1_competition_id(trading,competition_dict_id,competition_dict_name,competition_pokerstar,soccer_id,datetime_in_a_week):
+    competition_pokerstar_stripped=competition_pokerstar.replace(" - ", " ")
+    competition_filter = betfairlightweight.filters.market_filter(event_type_ids=soccer_id,text_query=competition_pokerstar_stripped,market_start_time={'to': datetime_in_a_week})
     competitions = trading.betting.list_competitions(filter=competition_filter, locale="it")
-    competition_dict_id,competition_dict_name = filter_competition_id(competitions_pokerstar, competitions, competition_dict_id,competition_dict_name)
+    competition_dict_id,competition_dict_name = filter_competition_id(competition_pokerstar, competitions, competition_dict_id,competition_dict_name)
     return competition_dict_id,competition_dict_name
 
 #FUNTION USED BY initialize_competition_dict()
@@ -135,37 +136,6 @@ def extract_event(event_list):
     for event in event_list:
         event_l.append(str(event.event.id))
     return event_l
-
-#FUNCTION WHO EXCTRACT THE MARKET IDS FOR THE EVENT WE WONT
-'''def extract_market_catalogue(trading,event_id,competition_dict):
-    markets_set = ["MATCH_ODDS", "OVER_UNDER_25", "BOTH_TEAMS_TO_SCORE"]
-    betfair_to_pokerstars = {'Over 2,5 goal': 'Over 2.5', 'Under 2,5 goal': 'Under 2.5', 'Sì': 'GOAL', 'No': 'NOGOAL'}
-    market_catalogue_filter = betfairlightweight.filters.market_filter(event_ids=event_id,market_type_codes=markets_set)
-    market_catalogues = trading.betting.list_market_catalogue(filter=market_catalogue_filter, locale="it", max_results='1000',market_projection=['RUNNER_DESCRIPTION', 'EVENT','COMPETITION'],sort='FIRST_TO_START')
-    selection_dict = {}
-    market_dict= {}
-    #print(market_catalogues)
-    #print(event_id)
-    #print(json.dumps(json.loads(market_catalogues[2].json()), indent=2))
-    for market in market_catalogues:
-        market_id = market.market_id
-        name = market.event.name
-        date = market.event.open_date + datetime.timedelta(hours=2)
-        #REALLY BAD SOLUTION, IF THE NAME IS AT THE END OF THE LIST IT TAKES O(n)<-------------------------------------
-        for key,value in competition_dict.items():
-            if value["betfair_name"]==market.competition.name:
-                comp=key
-                break
-            else:
-                print("HUSTON WE HAVE A MASSIVE PILE OF SHIT, ",market.competition.name," IS NOT IN COMPETITION_DICT!!!!!")
-        for runner in market.runners:
-            market_dict[str(market_id)] = { "event_name" : name,  "date" : date, "competition_name" : comp }
-            selection_name=runner.runner_name
-            if selection_name in betfair_to_pokerstars:
-                selection_dict[str(runner.selection_id)] = betfair_to_pokerstars[selection_name]
-            else:
-                selection_dict[str(runner.selection_id)] = selection_name
-    return selection_dict, market_dict'''
 
 def extract_market_catalogue(trading,event_id,competition_dict_name):
     markets_set = ["MATCH_ODDS", "OVER_UNDER_25", "BOTH_TEAMS_TO_SCORE"]
@@ -272,7 +242,6 @@ def load_dataframe(competitions,date):
     results = trading.betting.list_event_types()
     soccer_id = [result.event_type.id for result in results if
                  result.event_type.name == "Soccer"]  # Betfair API wants id in a list
-
     # COMPETITION ID
     #datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=4)).strftime("%Y-%m-%dT%TZ")
     date = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
@@ -284,7 +253,7 @@ def load_dataframe(competitions,date):
     #                          'Conference League', 'Inghilterra - Premier League', 'Spagna - La Liga',
     #                         'Germania - Bundesliga', 'Francia - Ligue 1', 'Portogallo - Primeira Liga']
     competitions_pokerstar = competitions
-    competitions_pokerstar = [i.replace(" - ", " ") for i in competitions_pokerstar]
+    #competitions_pokerstar = [i.replace(" - ", " ") for i in competitions_pokerstar]
     memory_filename = "competition_dict_id.json"  # file where id competition ids are stored for minimizing the number of requests to the api
     memory_filename2 = "competition_dict_name.json"  # file where id competition ids are stored for minimizing the number of requests to the api
     competition_dict_id,competition_dict_name = initialize_competition_dict(trading, memory_filename,memory_filename2, competitions_pokerstar, soccer_id,datetime_in_a_week)
@@ -308,8 +277,8 @@ def load_dataframe(competitions,date):
 # competition_dict_id          save the pokerstar_name:competition_id
 # competition_dict_name        save the betfair_name:pokerstar_name
 if __name__ == "__main__":
-    competitions=['UEFA Nations League','Portogallo - Primeira Liga','Italia - Serie B','Germania - Bundesliga','Spagna - La Liga','Francia - Ligue 1','Inghilterra - Premier League','Italia - Serie A','Olanda - Eredivisie','Champions League']
+    competitions=['Portogallo - Primeira Liga','Germania - Bundesliga']
     #competitions=['Germania - Bundesliga','Portogallo - Primeira Liga','Italia - Serie B']
-    date='2022-10-03 21:00:00'
+    date='2022-11-03 21:00:00'
     data = load_dataframe(competitions,date)
     print(data)

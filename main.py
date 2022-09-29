@@ -75,6 +75,9 @@ print(betfair.ap_key)
 #IT'S ONLY READ THE EXISTING CSV AND UPDATE ONLY IF IT DOESN'T EXIST THE FILE
 
 data_pokerstar,data_betfair,competitions=update_dataframes(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
+print("usefull for debugging:")
+print(data_pokerstar.league.unique())
+print('-------------------------------')
 
 #print("test competizioni")
 print("pokerstars competitions scaraped:")
@@ -83,7 +86,7 @@ print("---")
 print("betfair competitions scaraped:")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 print('-------------------------------')
-print(data_pokerstar.league.unique())
+
 #---------------------------------------------------------------------------
 #START AT LINKING THE TWO DATAFRAME
 #JUST ONE COMPETITION
@@ -91,9 +94,43 @@ print(data_pokerstar.league.unique())
 print("--------------------------------------------LINKING PHASE")
 print("BETFAIR LEAGUES:",len(data_betfair["league"]),"    POKERSTARS LEAGUES:",len(data_pokerstar["league"]),  "         #")
 print("--------------------------------------------")
-#if len(data_betfair["league"]) < len(data_pokerstar["league"]): #parte dadataframe che ha meno entry
+#if len(data_betfair["league"]) < len(data_pokerstar["league"]): #parte dadataframe che ha meno ent
 
-#initialize the final dataframe
+
+
+
+#PRUNING DATAFRAME TO HAVE THE SAME NUMBER OF LEAGUE AND DATES
+data_pokerstar=pd.merge(data_pokerstar,data_betfair,on=["league","date"],how='outer',indicator=True,suffixes=("","_y"))
+#print(data_pokerstar.loc[data_pokerstar.league=="Portogallo - Primeira Liga"])
+data_pokerstar=data_pokerstar.loc[data_pokerstar._merge=='both'].drop(["_merge","home_team_y","away_team_y","selection_y","lay_price","lay_size"],axis=1)
+data_pokerstar = data_pokerstar.drop_duplicates()
+#print(data_pokerstar.loc[data_pokerstar.league=="Portogallo - Primeira Liga"])
+data_betfair=pd.merge(data_betfair,data_pokerstar,on=["league","date"],how='outer',indicator=True,suffixes=("","_y"))
+data_betfair = data_betfair.loc[data_betfair._merge=='both'].drop(["_merge","home_team_y","away_team_y","selection_y","lay_price","lay_size"],axis=1)
+data_betfair = data_betfair.drop_duplicates()
+print(data_betfair.loc[data_betfair.league=="Portogallo - Primeira Liga"])
+# IT DON'T DROP THE DUPLICATES!!!!!!!!<-----------------------------------------
+
+
+print("pokerstars :")
+print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
+print("---")
+print("betfair :")
+print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
+print('-------------------------------')
+
+#---------------------------------------------------------------------------
+#START AT LINKING THE TWO DATAFRAME
+#JUST ONE COMPETITION
+
+'''print("--------------------------------------------LINKING PHASE")
+print("BETFAIR LEAGUES:",len(data_betfair["league"]),"    POKERSTARS LEAGUES:",len(data_pokerstar["league"]),  "         #")
+print("--------------------------------------------")'''
+
+
+
+
+'''#initialize the final dataframe
 final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
 
 #initialize dict_teams. it links the pokerstar team name to the betfair team name. and it is save so every epoch the program became faster 
@@ -107,6 +144,8 @@ def initialize_dict_teams(filename):
 
 dict_team_filename='dict_teams.json'
 dict_teams=initialize_dict_teams(dict_team_filename)
+
+
 
 #INSERT LOOP OVER data_betfair["league"].unique()
 first_comp=data_betfair["league"].unique()[0]
@@ -181,27 +220,8 @@ if home_index==away_index:
 else:
 	#PRINT BOTH INDEX FROM SUBSETS
 	print("")
-	#ASK IF WE NEED TO IGNORE THE ENTRY
+	#ASK IF WE NEED TO IGNORE THE ENTRY '''
 
-
-
-
-'''
-#LOOP OVER DATETIME
-dates=tmp_betfair["date"].unique() #LISTS OF EVENTS
-#for testing <-------------------------------------------
-data_1=dates[0]
-print(data_1)
-
-
-events=tmp_betfair.loc[(tmp_betfair["date"]==data_1,["home_team","away_team"])].value_counts() # ALL COUPLES IN THAT HOUR
-#CYCLE OVER COUPLES IF THERE ARE MORE THAN ONE EVENT AT THAT TIME
-print(events.keys()[0][0]) #1° couple, home_team
-teams_dict={} # {betfair_team_name:pokerstar_team_name} TO SAVE IF THERE ARE NAME DIFFERENT
-if events.keys()[0][0] in tmp_poker.loc[tmp_poker["date"]==data_1,"home_team"].values:
-	teams_dict[events.keys()[0][0]]=events.keys()[0][0]
-	print(tmp_poker.loc[ tmp_poker["home_team"]==events.keys()[0][0]].loc[tmp_poker["date"]==data_1]) #slice of tmp_poker in data_1 and with home_team 0
-print(teams_dict)'''
 
 
 
