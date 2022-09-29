@@ -64,71 +64,54 @@ pokerstar_save_filename="pokerstar.csv"
 competitions_save_filename="competitions.json"
 betfair_save_filename="betfair.csv"
 
-#ONLY DEBUG
+#ONLY DEBUG----------------------------------------------------------
 non_interactive_login_url='https://identitysso-cert.betfair.it/api/certlogin'    #Just for get the session token SSOID on the italian website
 certificates=('certificates/betfair_api.crt','certificates/betfair_api.key') #local position of my XRC certificates and secret key
 print(betfair.get_ssoid(betfair.usr,betfair.psw,betfair.ap_key,certificates,non_interactive_login_url))
 print(betfair.ap_key)
+#ONLY DEBUG----------------------------------------------------------
 
-#UPDATE THE CSV
+
+#UPDATE THE CSV    <------------------------------------------------------------------ MODIFY IN THE FINAL VERSION
 #ONLY FOR DEBUG    <------------------------------------------------------------------ MODIFY IN THE FINAL VERSION 
 #IT'S ONLY READ THE EXISTING CSV AND UPDATE ONLY IF IT DOESN'T EXIST THE FILE
-
 data_pokerstar,data_betfair,competitions=update_dataframes(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
+
+'''#ONLY FOR DEGUB------------------------------------------------------------
 print("usefull for debugging:")
 print(data_pokerstar.league.unique())
 print('-------------------------------')
-
-#print("test competizioni")
-print("pokerstars competitions scaraped:")
+print("total pokerstars competitions scaraped:")
 print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
 print("---")
-print("betfair competitions scaraped:")
+print("total betfair competitions scaraped:")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 print('-------------------------------')
-
-#---------------------------------------------------------------------------
-#START AT LINKING THE TWO DATAFRAME
-#JUST ONE COMPETITION
-
-print("--------------------------------------------LINKING PHASE")
-print("BETFAIR LEAGUES:",len(data_betfair["league"]),"    POKERSTARS LEAGUES:",len(data_pokerstar["league"]),  "         #")
-print("--------------------------------------------")
-#if len(data_betfair["league"]) < len(data_pokerstar["league"]): #parte dadataframe che ha meno ent
-
-
-
+#ONLY FOR DEGUB------------------------------------------------------------'''
 
 #PRUNING DATAFRAME TO HAVE THE SAME NUMBER OF LEAGUE AND DATES
-data_pokerstar=pd.merge(data_pokerstar,data_betfair,on=["league","date"],how='outer',indicator=True,suffixes=("","_y"))
-#print(data_pokerstar.loc[data_pokerstar.league=="Portogallo - Primeira Liga"])
-data_pokerstar=data_pokerstar.loc[data_pokerstar._merge=='both'].drop(["_merge","home_team_y","away_team_y","selection_y","lay_price","lay_size"],axis=1)
+data_pokerstar = pd.merge(data_pokerstar,data_betfair,on=["league","date"],how='outer',indicator=True,suffixes=("","_y"))
+data_pokerstar = data_pokerstar.loc[data_pokerstar._merge=='both'].drop(["_merge","home_team_y","away_team_y","selection_y","lay_price","lay_size"],axis=1)
 data_pokerstar = data_pokerstar.drop_duplicates()
 #print(data_pokerstar.loc[data_pokerstar.league=="Portogallo - Primeira Liga"])
-data_betfair=pd.merge(data_betfair,data_pokerstar,on=["league","date"],how='outer',indicator=True,suffixes=("","_y"))
-data_betfair = data_betfair.loc[data_betfair._merge=='both'].drop(["_merge","home_team_y","away_team_y","selection_y","lay_price","lay_size"],axis=1)
+data_betfair = pd.merge(data_betfair,data_pokerstar,on=["league","date"],how='outer',indicator=True,suffixes=("","_y"))
+data_betfair = data_betfair.loc[data_betfair._merge=='both'].drop(["_merge","home_team_y","away_team_y","selection_y","odd"],axis=1)
 data_betfair = data_betfair.drop_duplicates()
-print(data_betfair.loc[data_betfair.league=="Portogallo - Primeira Liga"])
-# IT DON'T DROP THE DUPLICATES!!!!!!!!<-----------------------------------------
 
 
-print("pokerstars :")
+#ONLY FOR DEGUB------------------------------------------------------------
+print("pokerstars pruned :")
 print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
 print("---")
-print("betfair :")
+print("betfair pruned :")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 print('-------------------------------')
+#ONLY FOR DEGUB------------------------------------------------------------
+
 
 #---------------------------------------------------------------------------
 #START AT LINKING THE TWO DATAFRAME
 #JUST ONE COMPETITION
-
-'''print("--------------------------------------------LINKING PHASE")
-print("BETFAIR LEAGUES:",len(data_betfair["league"]),"    POKERSTARS LEAGUES:",len(data_pokerstar["league"]),  "         #")
-print("--------------------------------------------")'''
-
-
-
 
 '''#initialize the final dataframe
 final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
