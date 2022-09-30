@@ -41,7 +41,7 @@ def request_dataframe(pokerstar_save_filename,competitions_save_filename,betfair
 	# read HD saved files
 	competitions = open_list(competitions_save_filename)
 	data_pokerstar = pd.read_csv(pokerstar_save_filename)
-	max_date = data_pokerstar["date"].max()
+	max_date = data_pokerstar["date"].iloc[-1] #dataframe is sorted on date coloumn
 	# request betfair data                                         AFTER INCLUDE IN update_pokerstar
 	data_betfair = betfair.load_dataframe(competitions, max_date)
 	data_betfair.to_csv(betfair_save_filename,header=True, index=False)
@@ -99,21 +99,23 @@ data_betfair = data_betfair.loc[data_betfair._merge=='both'].drop(["_merge","hom
 data_betfair = data_betfair.drop_duplicates()
 
 
-#ONLY FOR DEGUB------------------------------------------------------------
+'''#ONLY FOR DEGUB------------------------------------------------------------
 print("pokerstars pruned :")
 print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
 print("---")
 print("betfair pruned :")
 print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
 print('-------------------------------')
-#ONLY FOR DEGUB------------------------------------------------------------
+#ONLY FOR DEGUB------------------------------------------------------------'''
 
 
 #---------------------------------------------------------------------------
 #START AT LINKING THE TWO DATAFRAME
 #JUST ONE COMPETITION
 
-'''#initialize the final dataframe
+
+
+#initialize the final dataframe
 final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
 
 #initialize dict_teams. it links the pokerstar team name to the betfair team name. and it is save so every epoch the program became faster 
@@ -138,17 +140,15 @@ print("first competition:",first_comp)
 tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
 tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
 print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
-tmp_len_ps=len(tmp_poker)
-tmp_len_bf=len(tmp_betfair)
-#add if condition to use as dataframe the smallest len1 < len2 <-----------------------------
-#in this case they are the same normally betfair is smaller
 
 
 dates=tmp_betfair["date"].unique()
 #LOOP OVER DATES<-------------------------
 #for debug only 1
 date_1=dates[0]
-print(date_1)
+print("first date: ",date_1)
+
+
 events_bf = tmp_betfair.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
 events_ps = tmp_poker.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
 print("---------------------")
@@ -158,6 +158,8 @@ print("-----")
 print("betfair sub_dataframe:")
 print(events_bf)
 print("----------------------")
+
+'''
 #insert check IF len<len2: <----------------------------------
 #start from the short one
 
@@ -203,8 +205,8 @@ if home_index==away_index:
 else:
 	#PRINT BOTH INDEX FROM SUBSETS
 	print("")
-	#ASK IF WE NEED TO IGNORE THE ENTRY '''
-
+	#ASK IF WE NEED TO IGNORE THE ENTRY 
+'''
 
 
 
