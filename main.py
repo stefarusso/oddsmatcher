@@ -4,11 +4,8 @@ import pandas as pd
 import datetime
 import json
 from Levenshtein import jaro_winkler as jaro
-pd.set_option('display.max_row', None) #FOR DEBUG
+#pd.set_option('display.max_row', None) #FOR DEBUG
 
-def save_json_file(filename,object):
-	with open(filename, 'w') as outfile:
-		json.dump(object, outfile,indent=2)
 def save_json_file(filename,object):
 	with open(filename, 'w') as outfile:
 		json.dump(object, outfile,indent=2)
@@ -141,7 +138,7 @@ tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WI
 tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
 print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
 
-
+#DATES LOOP
 dates=tmp_betfair["date"].unique()
 #LOOP OVER DATES<-------------------------
 #for debug only 1
@@ -149,24 +146,26 @@ date_1=dates[0]
 print("first date: ",date_1)
 
 
+#SUBDATAFRAMES FOR THE DATE
 events_bf = tmp_betfair.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
-events_ps = tmp_poker.loc[(tmp_betfair["date"]==date_1,["home_team","away_team"])].value_counts()
-print("---------------------")
-print("pokerstar sub_dataframe:")
-print(events_ps)
-print("-----")
+events_bf=events_bf.keys().to_frame(index=False) #PANDAS SERIES to DATAFRAME
+len_bf=len(events_bf)
+print("----------------------")
+print("EVENTS ON THIS SPECIFIC DATETIME : ",date_1)
 print("betfair sub_dataframe:")
 print(events_bf)
-print("----------------------")
 
-'''
-#insert check IF len<len2: <----------------------------------
-#start from the short one
+events_ps = tmp_poker.loc[(tmp_poker["date"]==date_1,["home_team","away_team"])].value_counts()
+events_ps=events_ps.keys().to_frame(index=False) #PANDAS SERIES to DATAFRAME
+len_ps=len(events_ps)
+print("--------")
+print("pokerstar sub_dataframe:")
+print(events_ps)
+print("---------------------")
 
 
-#LOOP OVER EVENTS<----------------------
 def find_min_distance(event_ref,events_obs):
-	# event_ref is the single event use as reference PANDAS SERIES only one line
+	# event_ref is the SINGLE EVENT use as reference PANDAS SERIES only one line
 	# events_obs is the DATAFRAME with all the events of other tmp dataframe
 	distance_home = {}
 	distance_away = {}
@@ -175,38 +174,119 @@ def find_min_distance(event_ref,events_obs):
 		distance_away[event["away_team"]] = jaro(event_ref["away_team"], event["away_team"])
 	home_name = max(distance_home, key=distance_home.get)
 	away_name = max(distance_away, key=distance_away.get)
+	#home_name and away_name are from event_obs
 	return home_name,away_name
 
-#SUBDATAFRAMES
-events_ps=events_ps.keys().to_frame(index=False) #PANDAS SERIES to DATAFRAME
-events_bf=events_bf.keys().to_frame(index=False) #PANDAS SERIES to DATAFRAME
+def add_team_name(event,home_name,away_name,dict_teams,dict_team_filename,IS_BETFAIR_SHORTER):
+	if IS_BETFAIR_SHORTER:
+		dict_teams[event["home_team"]] = home_name
+		dict_teams[event["away_team"]] = away_name
+		save_json_file(dict_team_filename, dict_teams)
+	else:
+		dict_teams[home_name] = event["home_team"]
+		dict_teams[away_name] = event["away_team"]
+		save_json_file(dict_team_filename, dict_teams)
+
+def slicing(dict_teams,tmp_poker,tmp_betfair,obs_events,home_index,competition,date,home_name,away_name):
+	# CREATE SLICE TO ADD AT FINAL DATAFRAME
+	# ONE FOR EVERY SELECTION
+	slice_ps = tmp_poker.loc[(tmp_poker["league"] == competition) & (tmp_poker["home_team"] == home_name) & (
+				tmp_poker["away_team"] == away_name) & (tmp_poker["date"] == date)]
+	slice_bf = tmp_betfair.loc[
+		(tmp_betfair["league"] == competition) & (tmp_betfair["home_team"] == dict_teams[home_name]) & (
+					tmp_betfair["away_team"] == dict_teams[away_name]) & (tmp_betfair["date"] == date)]
+	# THERE IS ALWAYS THE POSSIBILITIES THAT BETFAIR AND POKERSTAR DON'T SHARE SAME TEAM NAMES
+	slice_bf = slice_bf.replace(dict_teams[home_name], home_name)
+	slice_bf = slice_bf.replace(dict_teams[away_name], away_name)
+	# SLICE OF FINAL DATABASE TO RETURN
+	slice = pd.merge(slice_ps, slice_bf, on=["league", "home_team", "away_team", "date", "selection"])
+	print(slice)
+	# DROP EVENT FROM OBSERVED SUBDATAFRAME
+	# can happen that it produce an empty dataframe<-----------------------------------ADD a CHECK AT THE BEGINING TO CHECK IF SUBDATAFRAME IS NOT EMPTY
+	obs_events = obs_events.drop(home_index)
+	# RETURN obs_events AND slice
+	return slice, obs_events
 
 
-#CHECK WHAT IS THE SHORT REFERENCE DATASET <-----------------------
-ref_events=events_bf
-obs_events=events_ps
 
-#ITERATE OVER events_ps <------ REFERENCE BETFAIR
-event1_bf=ref_events.iloc[0] #PANDAS SERIES, HAS 2 COLUMN : home_team, away_team
-home_name,away_name=find_min_distance(event1_bf,obs_events)
 
-#FIND INDEX OF THE home_name AND away_name ON THE SUBDATAFRAME
-home_index=obs_events["home_team"].loc[lambda x: x==home_name].index
-away_index=obs_events["away_team"].loc[lambda x: x==away_name].index
-if home_index==away_index:
-	#BISOGNA AGGIUNGERE IF CHECK SE REF=BETFAIR, PUO CAPITARE SUCCEDA l'OPPOSTO. DIZIONARIO DEVE SEMPRE ESSERE NELLA DIREZIONE BETFAIR:POKERSTAR<-----------------------------------
-	dict_teams[event1_bf["home_team"]] = home_name
-	dict_teams[event1_bf["away_team"]] = away_name
-	save_json_file(dict_team_filename,dict_teams)
-	#CREATE NEW LINE IN THE FINAL DATAFRAME
+def link_single_event(event1_ref,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
+	#FIRST CHECK IF THE TEAM ON THE EVENT ALREADY EXIST IN TEAM DICT
+	if not event1_ref["home_team"] in dict_teams or not event1_ref["away_team"] in dict_teams:
+		#find the index of the observed dataframe with closer team_name
+		#use Levenshtein distance
+		home_name, away_name = find_min_distance(event1_ref, obs_events)
+		#INDEX OF CORRISPONDING ROW IN THE OBSERVED SUBDATAFRAME
+		home_index = obs_events["home_team"].loc[lambda x: x == home_name].index
+		away_index = obs_events["away_team"].loc[lambda x: x == away_name].index
 
-	#REMOVE LINE IN SUBDATAFRAME
 
+		#<---------------------------------------------------------------------------- WRITE A FUNCTION
+		if home_index == away_index:
+			#SAVE NEW COUPLES IN TEAM_DICT
+			add_team_name(event1_ref, home_name, away_name, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+			slice,obs_events=slicing(dict_teams, tmp_poker, tmp_betfair,obs_events,home_index, first_comp, date_1, home_name, away_name)
+			return slice,obs_events
+		else:
+			print("##########################################################################")
+			print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
+			print("##########################################################################")
+			print(event1_ref,obs_events)
+			print("THE PROGRAM THINKS THAT :",event["home_team"],":",home_name,"   and   ",event["away_team"],":",away_name)
+			raise ValueError("The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ",date_1," leauge : ",first_comp)
+		# <---------------------------------------------------------------------------- WRITE A FUNCTION
+	else:
+		print("")
+		home_name = event1_ref["home_team"] 				#REFERENCE NOTATION
+		home_name = dict_teams[event1_ref["home_team"]] 	#OBSERVED NOTATION
+		away_name = event1_ref["away_team"]  # REFERENCE NOTATION
+		away_name = dict_teams[event1_ref["away_team"]]  # OBSERVED NOTATION
+
+		home_index = obs_events["home_team"].loc[lambda x: x == home_name].index
+		away_index = obs_events["away_team"].loc[lambda x: x == away_name].index
+		#use the same function of other if
+
+		#USE SIMPLY THE VALUE IN TEAM_DICT
+		#REMOVE THE LINE FROM SUBDATAFRAME
+
+def link_date_subdataframe(ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
+	#Link team names over date subdataframe
+	for event in ref_events.iloc:
+		#loop over row of reference dataframe (the shortest)
+		link_single_event(event, obs_events, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+		#ADD pd.concat WITH final_database
+
+
+# WE USE THE SHORTEST DATAFRAME AS REFERENCE AND LOOP OVER THE OBSERVED DATAFRAME LINKING THE NAME OF TEAMS
+#FIRST THE MOST COMMON CASE
+#lenbf < lenps
+if len_bf>=len_ps:
+	IS_BETFAIR_SHORTER = True
+	ref_events = events_bf
+	obs_events = events_ps
+	link_date_subdataframe(ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+#IN CASE lenbf>lenps
 else:
-	#PRINT BOTH INDEX FROM SUBSETS
-	print("")
-	#ASK IF WE NEED TO IGNORE THE ENTRY 
-'''
+	IS_BETFAIR_SHORTER = False
+	ref_events = events_ps
+	obs_events = events_bf
+	link_date_subdataframe(ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+
+
+
+'''def list_to_dataframe(List,col_names=['league','home_team','away_team','date','selection','odd','lay','lay_size']):
+    List=dict(zip(col_names,List))
+    List=pd.DataFrame([List])
+    return List'''
+
+#DYNAMIC BUILDING OF FINAL DATAFRAME
+#final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
+#row=[competition , home_name , away_name , date , selection_name , odd , lay , size]
+#pd.concat([final_dataframe, list_to_dataframe(row)], ignore_index=True)
+
+
+
+
 
 
 
