@@ -127,6 +127,7 @@ def find_min_distance(event_ref,events_obs):
 		distance_away[event["away_team"]] = jaro(event_ref["away_team"], event["away_team"])
 	home_name = max(distance_home, key=distance_home.get)
 	away_name = max(distance_away, key=distance_away.get)
+	print(distance_away)
 	#home_name and away_name are from event_obs
 	return home_name,away_name
 
@@ -174,8 +175,12 @@ def check_index(event,home_name, away_name,home_index,away_index,linking_data):
 		print("##########################################################################")
 		print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
 		print("##########################################################################")
-		print(event1_ref, linking_data.obs_events)
+		print(event, linking_data.obs_events)
+		print("---")
 		print("THE PROGRAM THINKS THAT :", event["home_team"], ":", home_name, "   and   ", event["away_team"], ":",away_name)
+		print("---")
+		print(home_index,away_index)
+		#AGGIUNGERE RICHIESTA ALL'UTENTE
 		raise ValueError(
 			"The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", linking_data.current_date," league : ", linking_data.current_competition)
 
@@ -241,34 +246,6 @@ class LinkingVariables():
 	#Initialize the final_dataframe
 	final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay_price','lay_size'])
 
-
-
-#---------------------------------------------------------------------------
-#START AT LINKING THE TWO DATAFRAME
-
-
-#JUST ONE COMPETITION
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------
-#INSERT LOOP OVER data_betfair["league"].unique()
-first_comp=data_betfair["league"].unique()[0]
-print("first competition:",first_comp)
-
-#create temporary dataframe with league
-tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
-tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
-print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
-
-
-
-
-
-'''#DATES LOOP
-dates=tmp_betfair["date"].unique()
-#LOOP OVER DATES<-------------------------
-#for debug only 1
-date_1=dates[0]
-print("first date: ",date_1)'''
-
 def extract_unique_events(tmp_betfair,tmp_poker,date_1):
 	# SUBDATAFRAMES FOR THE DATE
 	events_bf = tmp_betfair.loc[(tmp_betfair["date"] == date_1, ["home_team", "away_team"])].value_counts()
@@ -309,5 +286,25 @@ def extract_dates(tmp_betfair,tmp_poker,competition,dict_teams,dict_team_filenam
 		linking_data = LinkingVariables(date, competition, tmp_poker, tmp_betfair, ref_events, obs_events, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 		link_date_subdataframe(linking_data)
 
+
+#---------------------------------------------------------------------------
+#START AT LINKING THE TWO DATAFRAME
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+def extract_all_competitions(data_pokerstar,data_betfair,dict_teams, dict_team_filename):
+	for comp in data_betfair["league"].unique():
+		tmp_poker = data_pokerstar[data_pokerstar["league"] == comp]
+		tmp_betfair = data_betfair[data_betfair["league"] == comp]
+		extract_dates(tmp_betfair, tmp_poker, comp, dict_teams, dict_team_filename)
+
+extract_all_competitions(data_pokerstar,data_betfair,dict_teams,dict_team_filename)
+'''first_comp=data_betfair["league"].unique()[0]
+print("first competition:",first_comp)
+
+#create temporary dataframe with league
+tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
+tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
+print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
+
 #EXTRACT THE SUB-SUBDATAFRAME >>SINGLE COMPETITION >>SINGLE DATE
-extract_dates(tmp_betfair,tmp_poker,first_comp,dict_teams,dict_team_filename)
+extract_dates(tmp_betfair,tmp_poker,first_comp,dict_teams,dict_team_filename)'''
