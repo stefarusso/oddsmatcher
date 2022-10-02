@@ -112,8 +112,6 @@ print('-------------------------------')
 
 
 
-#initialize the final dataframe
-final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
 
 #initialize dict_teams. it links the pokerstar team name to the betfair team name. and it is save so every epoch the program became faster 
 def initialize_dict_teams(filename):
@@ -207,10 +205,23 @@ def slicing(dict_teams,tmp_poker,tmp_betfair,obs_events,home_index,competition,d
 	# RETURN obs_events AND slice
 	return slice, obs_events
 
-
-
-
-def link_single_event(event1_ref,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
+'''def check_index(home_name, away_name,home_index,away_index,tmp_poker,first_comp,date_1,tmp_betfair,obs_events,event1_ref,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
+	if home_index == away_index:
+		# SAVE NEW COUPLES IN TEAM_DICT
+		add_team_name(event1_ref, home_name, away_name, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+		slice, obs_events = slicing(dict_teams, tmp_poker, tmp_betfair, obs_events, home_index, first_comp, date_1,home_name, away_name)
+		return slice, obs_events
+	else:
+		print("##########################################################################")
+		print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
+		print("##########################################################################")
+		print(event1_ref, obs_events)
+		print("THE PROGRAM THINKS THAT :", event["home_team"], ":", home_name, "   and   ", event["away_team"], ":",
+			  away_name)
+		raise ValueError(
+			"The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", date_1," leauge : ", first_comp)
+'''
+'''def link_single_event(event1_ref,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
 	#FIRST CHECK IF THE TEAM ON THE EVENT ALREADY EXIST IN TEAM DICT
 	if not event1_ref["home_team"] in dict_teams or not event1_ref["away_team"] in dict_teams:
 		#find the index of the observed dataframe with closer team_name
@@ -219,24 +230,9 @@ def link_single_event(event1_ref,obs_events,dict_teams, dict_team_filename, IS_B
 		#INDEX OF CORRISPONDING ROW IN THE OBSERVED SUBDATAFRAME
 		home_index = obs_events["home_team"].loc[lambda x: x == home_name].index
 		away_index = obs_events["away_team"].loc[lambda x: x == away_name].index
-
-
-		#<---------------------------------------------------------------------------- WRITE A FUNCTION
-		if home_index == away_index:
-			#SAVE NEW COUPLES IN TEAM_DICT
-			add_team_name(event1_ref, home_name, away_name, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
-			slice,obs_events=slicing(dict_teams, tmp_poker, tmp_betfair,obs_events,home_index, first_comp, date_1, home_name, away_name)
-			return slice,obs_events
-		else:
-			print("##########################################################################")
-			print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
-			print("##########################################################################")
-			print(event1_ref,obs_events)
-			print("THE PROGRAM THINKS THAT :",event["home_team"],":",home_name,"   and   ",event["away_team"],":",away_name)
-			raise ValueError("The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ",date_1," leauge : ",first_comp)
-		# <---------------------------------------------------------------------------- WRITE A FUNCTION
+		slice, obs_event = check_index(home_name, away_name, home_index, away_index, tmp_poker, first_comp, date_1, tmp_betfair,obs_events, event1_ref, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 	else:
-		print("")
+		#USE SIMPLY THE VALUE IN TEAM_DICT
 		home_name = event1_ref["home_team"] 				#REFERENCE NOTATION
 		home_name = dict_teams[event1_ref["home_team"]] 	#OBSERVED NOTATION
 		away_name = event1_ref["away_team"]  # REFERENCE NOTATION
@@ -244,18 +240,77 @@ def link_single_event(event1_ref,obs_events,dict_teams, dict_team_filename, IS_B
 
 		home_index = obs_events["home_team"].loc[lambda x: x == home_name].index
 		away_index = obs_events["away_team"].loc[lambda x: x == away_name].index
-		#use the same function of other if
+		slice, obs_events = check_index(home_name, away_name, home_index, away_index, tmp_poker, first_comp, date_1, tmp_betfair,obs_events, event1_ref, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+	return slice,obs_events
+'''
 
+#CONTINUARE A RIMUOVERE VARIABILI, PROSSIMO È add_team_name <------------------------------------------------------------------------------
+def check_index(event,home_name, away_name,home_index,away_index,linking_data):
+	if home_index == away_index:
+		# SAVE NEW COUPLES IN TEAM_DICT
+		add_team_name(event, home_name, away_name, linking_data.dict.team_dict, linking_data.dict.dict_team_filename, linking_data.IS_BETFAIR_SHORTER)
+		slice, linking_data.obs_events = slicing(linking_data.dict.team_dict, linking_data.dataframe.tmp_ps, linking_data.dataframe.tmp_bf , linking_data.obs_events, home_index, linking_data.current_competition, linking_data.current_date,home_name, away_name)
+		return slice, linking_data.obs_events #RETURN INUTILE!!!!!
+	else:
+		print("##########################################################################")
+		print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
+		print("##########################################################################")
+		print(event1_ref, linking_data.obs_events)
+		print("THE PROGRAM THINKS THAT :", event["home_team"], ":", home_name, "   and   ", event["away_team"], ":",away_name)
+		raise ValueError(
+			"The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", linking_data.current_date," league : ", linking_data.current_competition)
+
+
+def link_single_event(event1_ref,linking_data):
+	#FIRST CHECK IF THE TEAM ON THE EVENT ALREADY EXIST IN TEAM DICT
+	if not event1_ref["home_team"] in linking_data.dict.team_dict or not event1_ref["away_team"] in linking_data.dict.team_dict:
+		#find the index of the observed dataframe with closer team_name
+		#use Levenshtein distance
+		home_name, away_name = find_min_distance(event1_ref, linking_data.obs_events)
+		#INDEX OF CORRISPONDING ROW IN THE OBSERVED SUBDATAFRAME
+		home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
+		away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
+		slice, linking_data.obs_events = check_index(event1_ref, home_name, away_name, home_index, away_index, linking_data) #RETURN INUTILE!!!!!
+	else:
 		#USE SIMPLY THE VALUE IN TEAM_DICT
-		#REMOVE THE LINE FROM SUBDATAFRAME
+		home_name = event1_ref["home_team"] 				#REFERENCE NOTATION
+		home_name = linking_data.dict.team_dict[event1_ref["home_team"]] 	#OBSERVED NOTATION
+		away_name = event1_ref["away_team"]  # REFERENCE NOTATION
+		away_name = linking_data.dict.team_dict[event1_ref["away_team"]]  # OBSERVED NOTATION
 
-def link_date_subdataframe(ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
+		home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
+		away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
+		slice, linking_data.obs_events = check_index(event1_ref,home_name, away_name, home_index, away_index,linking_data) #RETURN INUTILE!!!!!
+	return slice,obs_events
+
+'''def link_date_subdataframe(final_dataframe,ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER):
 	#Link team names over date subdataframe
 	for event in ref_events.iloc:
 		#loop over row of reference dataframe (the shortest)
-		link_single_event(event, obs_events, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+		slice, obs_events = link_single_event(event, obs_events, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 		#ADD pd.concat WITH final_database
+		final_dataframe = pd.concat([final_dataframe, slice], ignore_index=True)
+		print("------------------------------------\nFinal Dataframe:")
+		print(final_dataframe)
+'''
 
+def link_date_subdataframe(linking_data):
+	#Link team names over date subdataframe
+	ref_events=linking_data.ref_events
+	# obs_events == linking_data.obs_events
+	for event in ref_events.iloc:
+		#loop over row of reference dataframe (the shortest)
+		slice, linking_data.obs_events = link_single_event(event, linking_data) #RETURN INUTILE!!!!!
+		#ADD pd.concat WITH final_database
+		linking_data.final_dataframe = pd.concat([linking_data.final_dataframe, slice], ignore_index=True)
+		print("------------------------------------\nFinal Dataframe:")
+		print(linking_data.final_dataframe)
+
+
+
+
+#initialize the final dataframe
+final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay_price','lay_size'])
 
 # WE USE THE SHORTEST DATAFRAME AS REFERENCE AND LOOP OVER THE OBSERVED DATAFRAME LINKING THE NAME OF TEAMS
 #FIRST THE MOST COMMON CASE
@@ -264,29 +319,37 @@ if len_bf>=len_ps:
 	IS_BETFAIR_SHORTER = True
 	ref_events = events_bf
 	obs_events = events_ps
-	link_date_subdataframe(ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 #IN CASE lenbf>lenps
 else:
 	IS_BETFAIR_SHORTER = False
 	ref_events = events_ps
 	obs_events = events_bf
-	link_date_subdataframe(ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 
+#----------------------------------------------------------------------
+#CREATE CLASS OBJECT TO BEEN USED AS MEMEORY FOR ALL THE PARAMETERS NEEDED
+class Dict():
+	def __init__(self, team_dict, dict_team_filename):
+		self.team_dict = team_dict
+		self.dict_team_filename = dict_team_filename
+class Dataframes():
+	def __init__(self,tmp_ps,tmp_bf):
+		self.tmp_ps=tmp_ps
+		self.tmp_bf=tmp_bf
+class LinkingVariables():
+	def __init__(self,current_date,current_competition,tmp_ps,tmp_bf,ref_events,obs_events,dict_teams,dict_team_filename,IS_BETFAIR_SHORTER):
+		self.dataframe=Dataframes(tmp_ps,tmp_bf)
+		self.current_date=current_date
+		self.current_competition=current_competition
+		self.ref_events=ref_events
+		self.obs_events=obs_events
+		self.dict=Dict(dict_teams,dict_team_filename)
+		self.IS_BETFAIR_SHORTER=IS_BETFAIR_SHORTER
+	final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay_price','lay_size'])
 
+#-----------------------------------------------------
 
-'''def list_to_dataframe(List,col_names=['league','home_team','away_team','date','selection','odd','lay','lay_size']):
-    List=dict(zip(col_names,List))
-    List=pd.DataFrame([List])
-    return List'''
+linking_data=LinkingVariables(date_1,first_comp,tmp_poker,tmp_betfair,ref_events,obs_events,dict_teams,dict_team_filename,IS_BETFAIR_SHORTER)
 
-#DYNAMIC BUILDING OF FINAL DATAFRAME
-#final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay','lay_size'])
-#row=[competition , home_name , away_name , date , selection_name , odd , lay , size]
-#pd.concat([final_dataframe, list_to_dataframe(row)], ignore_index=True)
-
-
-
-
-
-
-
+'''link_date_subdataframe(final_dataframe,ref_events,obs_events,dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
+'''
+link_date_subdataframe(linking_data)
