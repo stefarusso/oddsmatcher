@@ -116,7 +116,7 @@ print('-------------------------------')
 
 
 
-#NEEDED A CHECK ON THE VALUE OF DISTANCE >=0.9 <---------------------------------------------------------------------------
+#NEEDED A CHECK ON THE VALUE OF DISTANCE >=0.9 <---------------------------------------------------------------------------NECESSARIA!!!!!!!!!!!!!!!!!!!!!!
 def find_min_distance(event_ref,events_obs):
 	# event_ref is the SINGLE EVENT use as reference PANDAS SERIES only one line
 	# events_obs is the DATAFRAME with all the events of other tmp dataframe
@@ -175,11 +175,8 @@ def check_index(event,home_name,away_name,home_index,away_index,linking_data):
 		return slice
 	else:
 		#<----------------------------------------------------------------------------------------------------------------FARE UNA FUNZIONE SEPARATA INVECE CHE STA PORCATA
-		print("##########################################################################")
-		print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
-		print("##########################################################################")
-		print("THE PROGRAM THINKS THAT :", event["home_team"], ":", home_name, "   and   ", event["away_team"], ":",away_name)
 		print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+		print("THE PROGRAM THINKS THAT :", event["home_team"], ":", home_name, "   and   ", event["away_team"], ":",away_name)
 		print("Chose the appropriate event in the list pls")
 		print("The program has failed and didn't find the event:\n[ %s-%s ]" %(event["home_team"],event["away_team"]))
 		#PRINT ALL POSSIBILITIES TO CHOICE
@@ -198,13 +195,8 @@ def check_index(event,home_name,away_name,home_index,away_index,linking_data):
 			home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
 			away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
 			print("It will be linked:   %s-%s and %s-%s"%(event["home_team"],home_name,event["away_team"],away_name))
-			print(home_name,away_name)
-			print(linking_data.IS_BETFAIR_SHORTER)#<----------------------------bugg in case this is False!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			print(linking_data.ref_events)
-			print(linking_data.obs_events)
 			add_team_name(event, home_name, away_name, linking_data)
 			slice = slicing(event, home_index, home_name, away_name, linking_data)
-			print("ADDED")
 			return slice
 		#raise ValueError("The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", linking_data.current_date," league : ", linking_data.current_competition)
 
@@ -290,7 +282,7 @@ def extract_unique_events(tmp_betfair,tmp_poker,date_1):
 	# FIRST THE MOST COMMON CASE
 	len_bf = len(events_bf)
 	len_ps = len(events_ps)
-	if len_bf >= len_ps:
+	if len_bf <= len_ps:
 		IS_BETFAIR_SHORTER = True
 		ref_events = events_bf
 		obs_events = events_ps
