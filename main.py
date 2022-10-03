@@ -116,7 +116,7 @@ print('-------------------------------')
 
 
 
-
+#NEEDED A CHECK ON THE VALUE OF DISTANCE >=0.9 <---------------------------------------------------------------------------
 def find_min_distance(event_ref,events_obs):
 	# event_ref is the SINGLE EVENT use as reference PANDAS SERIES only one line
 	# events_obs is the DATAFRAME with all the events of other tmp dataframe
@@ -156,37 +156,62 @@ def slicing(event,home_index,home_name,away_name,linking_data):
 
 def add_team_name(event,home_name,away_name,linking_data):
 	if linking_data.IS_BETFAIR_SHORTER:
-		print("Reference home_name: ",event["home_team"],"  Observed home_name: ",home_name)
+		print("Betfair name: ",event["home_team"],"  Pokerstar name: ",home_name)
 		dict_teams[event["home_team"]] = home_name
 		dict_teams[event["away_team"]] = away_name
 		save_json_file(linking_data.dict.dict_team_filename, linking_data.dict.team_dict)
 	else:
+		print("Pokerstar name: ", event["home_team"], "  Betfair name: ", home_name)
 		dict_teams[home_name] = event["home_team"]
 		dict_teams[away_name] = event["away_team"]
 		save_json_file(linking_data.dict.dict_team_filename, linking_data.dict.team_dict)
 
-def check_index(event,home_name, away_name,home_index,away_index,linking_data):
+def check_index(event,home_name,away_name,home_index,away_index,linking_data):
+	print(home_index,away_index)
 	if home_index == away_index:
 		# SAVE NEW COUPLES IN TEAM_DICT
 		add_team_name(event, home_name, away_name, linking_data)
 		slice = slicing(event,home_index,home_name,away_name,linking_data)
 		return slice
 	else:
+		#<----------------------------------------------------------------------------------------------------------------FARE UNA FUNZIONE SEPARATA INVECE CHE STA PORCATA
 		print("##########################################################################")
 		print("#      WE HAVE A PROBLEM!!!! THE PROGRAM TRY TO FIND LINK BETWEEN: 		#")
 		print("##########################################################################")
-		print(event, linking_data.obs_events)
-		print("---")
 		print("THE PROGRAM THINKS THAT :", event["home_team"], ":", home_name, "   and   ", event["away_team"], ":",away_name)
-		print("---")
-		print(home_index,away_index)
-		#AGGIUNGERE RICHIESTA ALL'UTENTE
-		raise ValueError(
-			"The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", linking_data.current_date," league : ", linking_data.current_competition)
+		print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+		print("Chose the appropriate event in the list pls")
+		print("The program has failed and didn't find the event:\n[ %s-%s ]" %(event["home_team"],event["away_team"]))
+		#PRINT ALL POSSIBILITIES TO CHOICE
+		print("[0]   NOT FOUND")
+		i = 1
+		for e in linking_data.obs_events.iloc:
+			print("[%i]   %s-%s"%(i,e["home_team"],e["away_team"]))
+			i += 1
+		user_input=int(input("insert value listed [0,1,2....]: "))
+		if user_input==0:
+			#Return an empty dataframe with the appropriate dimension
+			return None
+		else:
+			home_name=linking_data.obs_events.iloc[user_input-1]["home_team"]
+			away_name=linking_data.obs_events.iloc[user_input-1]["away_team"]
+			home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
+			away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
+			print("It will be linked:   %s-%s and %s-%s"%(event["home_team"],home_name,event["away_team"],away_name))
+			print(home_name,away_name)
+			print(linking_data.IS_BETFAIR_SHORTER)#<----------------------------bugg in case this is False!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			print(linking_data.ref_events)
+			print(linking_data.obs_events)
+			add_team_name(event, home_name, away_name, linking_data)
+			slice = slicing(event, home_index, home_name, away_name, linking_data)
+			print("ADDED")
+			return slice
+		#raise ValueError("The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", linking_data.current_date," league : ", linking_data.current_competition)
 
 
 def link_single_event(event,linking_data):
 	#FIRST CHECK IF THE TEAM ON THE EVENT ALREADY EXIST IN TEAM DICT
+
 	if not event["home_team"] in linking_data.dict.team_dict or not event["away_team"] in linking_data.dict.team_dict:
 		#find the index of the observed dataframe with closer team_name
 		#use Levenshtein distance
@@ -298,13 +323,3 @@ def extract_all_competitions(data_pokerstar,data_betfair,dict_teams, dict_team_f
 		extract_dates(tmp_betfair, tmp_poker, comp, dict_teams, dict_team_filename)
 
 extract_all_competitions(data_pokerstar,data_betfair,dict_teams,dict_team_filename)
-'''first_comp=data_betfair["league"].unique()[0]
-print("first competition:",first_comp)
-
-#create temporary dataframe with league
-tmp_poker=data_pokerstar[data_pokerstar["league"]==first_comp] #SUB DATAFRAME WITH ONLY THE COMPETITIOn
-tmp_betfair=data_betfair[data_betfair["league"]==first_comp]
-print("pokerstar:"+ str(len(tmp_poker))+"   betfair:"+str(len(tmp_betfair)))  #USE THE ONE WITH LESS ENTRY AS GUIDE
-
-#EXTRACT THE SUB-SUBDATAFRAME >>SINGLE COMPETITION >>SINGLE DATE
-extract_dates(tmp_betfair,tmp_poker,first_comp,dict_teams,dict_team_filename)'''
