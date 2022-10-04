@@ -64,9 +64,6 @@ def initialize_dict_teams(filename):
     save_json_file(filename, dict_teams)
     return dict_teams
 
-
-
-
 # START OF THE PROGRAM
 
 #ONLY FOR DEBUG, NO NEED TO SAVE IN A FILE THE DATAFRAMES------------------------------------------------------------------------------------------------------------->
@@ -131,7 +128,7 @@ def find_min_distance(event_ref,events_obs):
 	print(home_name)
 	print(distance_away_dict)
 	print(away_name)
-	check = distance_home_dict[home_name]>0.9 and distance_away_dict[away_name]>0.9
+	check = distance_home_dict[home_name]>0.90 and distance_away_dict[away_name]>0.9
 	print(check)
 	#home_name and away_name are from event_obs
 	#return home_name,away_name
@@ -263,6 +260,9 @@ class Dataframes():
 		self.tmp_bf=tmp_bf
 
 
+def empty_dataframe():
+	dataframe = pd.DataFrame(columns=['league', 'home_team', 'away_team', 'date', 'selection', 'odd', 'lay_price', 'lay_size'])
+	return dataframe
 class LinkingVariables():
 	#IT'S ONE OBJECT FOR EVERY COMPETITION
 	def __init__(self,current_date,current_competition,tmp_ps,tmp_bf,ref_events,obs_events,dict_teams,dict_team_filename,IS_BETFAIR_SHORTER):
@@ -274,7 +274,9 @@ class LinkingVariables():
 		self.dict=Dict(dict_teams,dict_team_filename)
 		self.IS_BETFAIR_SHORTER=IS_BETFAIR_SHORTER
 	#Initialize the final_dataframe
-	final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay_price','lay_size'])
+	#final_dataframe=pd.DataFrame(columns=['league','home_team','away_team','date','selection','odd','lay_price','lay_size'])
+	final_dataframe=empty_dataframe()
+
 
 def extract_unique_events(tmp_betfair,tmp_poker,date_1):
 	# SUBDATAFRAMES FOR THE DATE
@@ -307,7 +309,7 @@ def extract_unique_events(tmp_betfair,tmp_poker,date_1):
 	print("betfair_len: ", len_bf, "  pokerstar_len: ", len_ps, "  IS_BETFAIR_SHORT: ", IS_BETFAIR_SHORTER)
 	return ref_events,obs_events,IS_BETFAIR_SHORTER
 
-def extract_dates(tmp_betfair,tmp_poker,competition,dict_teams,dict_team_filename):
+def extract_dates(merged_dataframe,tmp_betfair,tmp_poker,competition,dict_teams,dict_team_filename):
 	# DATES LOOP
 	dates = tmp_betfair["date"].unique()
 	for date in tmp_betfair["date"].unique():
@@ -315,16 +317,24 @@ def extract_dates(tmp_betfair,tmp_poker,competition,dict_teams,dict_team_filenam
 		ref_events, obs_events, IS_BETFAIR_SHORTER = extract_unique_events(tmp_betfair, tmp_poker, date)
 		linking_data = LinkingVariables(date, competition, tmp_poker, tmp_betfair, ref_events, obs_events, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 		link_date_subdataframe(linking_data)
-
+		merged_dataframe = pd.concat([merged_dataframe,linking_data.final_dataframe], ignore_index=True)
+	return merged_dataframe
 
 #---------------------------------------------------------------------------
 #START AT LINKING THE TWO DATAFRAME
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------
-def extract_all_competitions(data_pokerstar,data_betfair,dict_teams, dict_team_filename):
+def extract_all_competitions(merged_dataframe,data_pokerstar,data_betfair,dict_teams, dict_team_filename):
 	for comp in data_betfair["league"].unique():
+		print("##################################################################################")
+		print("COMPETIZIONE : %s"% comp)
 		tmp_poker = data_pokerstar[data_pokerstar["league"] == comp]
 		tmp_betfair = data_betfair[data_betfair["league"] == comp]
-		extract_dates(tmp_betfair, tmp_poker, comp, dict_teams, dict_team_filename)
+		dates_dataframe = extract_dates(merged_dataframe,tmp_betfair, tmp_poker, comp, dict_teams, dict_team_filename)
+		merged_dataframe = pd.concat([merged_dataframe, dates_dataframe], ignore_index=True)
+	return merged_dataframe
+merged_dataframe=empty_dataframe()
+merged_dataframe = extract_all_competitions(merged_dataframe,data_pokerstar,data_betfair,dict_teams,dict_team_filename)
+print(merged_dataframe)
 
-extract_all_competitions(data_pokerstar,data_betfair,dict_teams,dict_team_filename)
+#ADD column rating
