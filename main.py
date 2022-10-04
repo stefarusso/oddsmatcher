@@ -120,16 +120,22 @@ print('-------------------------------')
 def find_min_distance(event_ref,events_obs):
 	# event_ref is the SINGLE EVENT use as reference PANDAS SERIES only one line
 	# events_obs is the DATAFRAME with all the events of other tmp dataframe
-	distance_home = {}
-	distance_away = {}
+	distance_home_dict = {}
+	distance_away_dict = {}
 	for event in events_obs.iloc:
-		distance_home[event["home_team"]] = jaro(event_ref["home_team"], event["home_team"])
-		distance_away[event["away_team"]] = jaro(event_ref["away_team"], event["away_team"])
-	home_name = max(distance_home, key=distance_home.get)
-	away_name = max(distance_away, key=distance_away.get)
-	print(distance_away)
+		distance_home_dict[event["home_team"]] = jaro(event_ref["home_team"], event["home_team"])
+		distance_away_dict[event["away_team"]] = jaro(event_ref["away_team"], event["away_team"])
+	home_name = max(distance_home_dict, key=distance_home_dict.get)
+	away_name = max(distance_away_dict, key=distance_away_dict.get)
+	print(distance_home_dict)
+	print(home_name)
+	print(distance_away_dict)
+	print(away_name)
+	check = distance_home_dict[home_name]>0.9 and distance_away_dict[away_name]>0.9
+	print(check)
 	#home_name and away_name are from event_obs
-	return home_name,away_name
+	#return home_name,away_name
+	return home_name,away_name,check
 
 def slicing(event,home_index,home_name,away_name,linking_data):
 	# CREATE SLICE TO ADD AT FINAL DATAFRAME
@@ -157,11 +163,13 @@ def slicing(event,home_index,home_name,away_name,linking_data):
 def add_team_name(event,home_name,away_name,linking_data):
 	if linking_data.IS_BETFAIR_SHORTER:
 		print("Betfair name: ",event["home_team"],"  Pokerstar name: ",home_name)
+		print("Betfair name: ", event["away_team"], "  Pokerstar name: ", away_name)
 		dict_teams[event["home_team"]] = home_name
 		dict_teams[event["away_team"]] = away_name
 		save_json_file(linking_data.dict.dict_team_filename, linking_data.dict.team_dict)
 	else:
 		print("Pokerstar name: ", event["home_team"], "  Betfair name: ", home_name)
+		print("Pokerstar name: ", event["away_team"], "  Betfair name: ", away_name)
 		dict_teams[home_name] = event["home_team"]
 		dict_teams[away_name] = event["away_team"]
 		save_json_file(linking_data.dict.dict_team_filename, linking_data.dict.team_dict)
@@ -207,11 +215,16 @@ def link_single_event(event,linking_data):
 	if not event["home_team"] in linking_data.dict.team_dict or not event["away_team"] in linking_data.dict.team_dict:
 		#find the index of the observed dataframe with closer team_name
 		#use Levenshtein distance
-		home_name, away_name = find_min_distance(event, linking_data.obs_events)
-		#INDEX OF CORRISPONDING ROW IN THE OBSERVED SUBDATAFRAME
-		home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
-		away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
-		slice = check_index(event, home_name, away_name, home_index, away_index, linking_data)
+		home_name, away_name, check  = find_min_distance(event, linking_data.obs_events)
+		if check:
+			# INDEX OF CORRISPONDING ROW IN THE OBSERVED SUBDATAFRAME
+			home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
+			away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
+			slice = check_index(event, home_name, away_name, home_index, away_index, linking_data)
+		else:
+			#in case that one of the distance of home-home or away-away names are less than 0.9
+			#for example if we have a 1 line subdataframe but the 2 events are not the same
+			slice = check_index(event, home_name, away_name, 0, 1, linking_data)
 	else:
 		#USE SIMPLY THE VALUE IN TEAM_DICT
 		home_name = event["home_team"] 				#REFERENCE NOTATION
