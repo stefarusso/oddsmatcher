@@ -338,3 +338,10 @@ merged_dataframe = extract_all_competitions(merged_dataframe,data_pokerstar,data
 print(merged_dataframe)
 
 #ADD column rating
+commission=5
+
+commission=commission/100
+merged_dataframe["rating"]=merged_dataframe["odd"]*(1-(1/(merged_dataframe["lay_price"]-commission))*(merged_dataframe["lay_price"]-1))
+merged_dataframe.sort_values("rating",ascending=False,inplace=True,ignore_index=True)
+merged_dataframe= merged_dataframe.drop_duplicates()
+print(merged_dataframe)
