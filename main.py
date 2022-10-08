@@ -4,8 +4,9 @@ import pandas as pd
 import datetime
 import json
 from Levenshtein import jaro_winkler as jaro
-#pd.set_option('display.max_row', None) #FOR DEBUG
-
+pd.set_option('display.max_row', None) #FOR DEBUG
+pd.set_option('display.max_columns', None) #FOR DEBUG
+pd.set_option('display.width', 20000)
 def save_json_file(filename,object):
 	with open(filename, 'w') as outfile:
 		json.dump(object, outfile,indent=2)
@@ -54,7 +55,6 @@ def update_dataframes(pokerstar_save_filename,competitions_save_filename,betfair
 		data_pokerstar, data_betfair, competitions = request_dataframe(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
 	return data_pokerstar, data_betfair, competitions
 
-
 #initialize dict_teams. it links the pokerstar team name to the betfair team name. and it is save so every epoch the program became faster 
 def initialize_dict_teams(filename):
     try:
@@ -63,23 +63,6 @@ def initialize_dict_teams(filename):
         dict_teams = {}
     save_json_file(filename, dict_teams)
     return dict_teams
-
-# START OF THE PROGRAM
-
-#ONLY FOR DEBUG, NO NEED TO SAVE IN A FILE THE DATAFRAMES------------------------------------------------------------------------------------------------------------->
-pokerstar_save_filename="pokerstar.csv"
-competitions_save_filename="competitions.json"
-betfair_save_filename="betfair.csv"
-
-non_interactive_login_url='https://identitysso-cert.betfair.it/api/certlogin'    #Just for get the session token SSOID on the italian website
-certificates=('certificates/betfair_api.crt','certificates/betfair_api.key') #local position of my XRC certificates and secret key
-print(betfair.get_ssoid(betfair.usr,betfair.psw,betfair.ap_key,certificates,non_interactive_login_url))
-print(betfair.ap_key)
-
-#UPDATE THE CSV    <------------------------------------------------------------------ MODIFY IN THE FINAL VERSION
-#IT'S ONLY READ THE EXISTING CSV AND UPDATE ONLY IF IT DOESN'T EXIST THE FILE
-data_pokerstar,data_betfair,competitions=update_dataframes(pokerstar_save_filename,competitions_save_filename,betfair_save_filename)
-#ONLY DEBUG---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
 def prune_dataframes(data_pokerstar,data_betfair):
 	# PRUNING DATAFRAME TO HAVE THE SAME NUMBER OF LEAGUE AND DATES
@@ -92,28 +75,6 @@ def prune_dataframes(data_pokerstar,data_betfair):
 	data_betfair = data_betfair.drop_duplicates()
 	return data_pokerstar,data_betfair
 
-#CREATE DICTIONARY TO STORE TEAM_NAME FORMAT BETWEEN THE 2 DATAFRAMES
-dict_team_filename='dict_teams.json'
-dict_teams=initialize_dict_teams(dict_team_filename)
-
-#PRUNING DATAFRAME TO HAVE THE SAME NUMBER OF LEAGUE AND DATES
-data_pokerstar,data_betfair=prune_dataframes(data_pokerstar,data_betfair)
-
-
-
-'''#ONLY FOR DEGUB------------------------------------------------------------
-print("pokerstars pruned :")
-print([(i,len(data_pokerstar[data_pokerstar.league==str(i)])) for i in data_pokerstar.league.unique()]) #check number of line for competition
-print("---")
-print("betfair pruned :")
-print([(i,len(data_betfair[data_betfair.league==str(i)])) for i in data_betfair.league.unique()])
-print('-------------------------------')
-#ONLY FOR DEGUB------------------------------------------------------------'''
-
-
-
-
-#NEEDED A CHECK ON THE VALUE OF DISTANCE >=0.9 <---------------------------------------------------------------------------NECESSARIA!!!!!!!!!!!!!!!!!!!!!!
 def find_min_distance(event_ref,events_obs):
 	# event_ref is the SINGLE EVENT use as reference PANDAS SERIES only one line
 	# events_obs is the DATAFRAME with all the events of other tmp dataframe
@@ -124,12 +85,12 @@ def find_min_distance(event_ref,events_obs):
 		distance_away_dict[event["away_team"]] = jaro(event_ref["away_team"], event["away_team"])
 	home_name = max(distance_home_dict, key=distance_home_dict.get)
 	away_name = max(distance_away_dict, key=distance_away_dict.get)
-	print(distance_home_dict)
-	print(home_name)
-	print(distance_away_dict)
-	print(away_name)
+	#print(distance_home_dict)
+	#print(home_name)
+	#print(distance_away_dict)
+	#print(away_name)
 	check = distance_home_dict[home_name]>0.90 and distance_away_dict[away_name]>0.9
-	print(check)
+	#print(check)
 	#home_name and away_name are from event_obs
 	#return home_name,away_name
 	return home_name,away_name,check
@@ -159,20 +120,19 @@ def slicing(event,home_index,home_name,away_name,linking_data):
 
 def add_team_name(event,home_name,away_name,linking_data):
 	if linking_data.IS_BETFAIR_SHORTER:
-		print("Betfair name: ",event["home_team"],"  Pokerstar name: ",home_name)
-		print("Betfair name: ", event["away_team"], "  Pokerstar name: ", away_name)
+		#print("Betfair name: ",event["home_team"],"  Pokerstar name: ",home_name)
+		#print("Betfair name: ", event["away_team"], "  Pokerstar name: ", away_name)
 		dict_teams[event["home_team"]] = home_name
 		dict_teams[event["away_team"]] = away_name
 		save_json_file(linking_data.dict.dict_team_filename, linking_data.dict.team_dict)
 	else:
-		print("Pokerstar name: ", event["home_team"], "  Betfair name: ", home_name)
-		print("Pokerstar name: ", event["away_team"], "  Betfair name: ", away_name)
+		#print("Pokerstar name: ", event["home_team"], "  Betfair name: ", home_name)
+		#print("Pokerstar name: ", event["away_team"], "  Betfair name: ", away_name)
 		dict_teams[home_name] = event["home_team"]
 		dict_teams[away_name] = event["away_team"]
 		save_json_file(linking_data.dict.dict_team_filename, linking_data.dict.team_dict)
 
 def check_index(event,home_name,away_name,home_index,away_index,linking_data):
-	print(home_index,away_index)
 	if home_index == away_index:
 		# SAVE NEW COUPLES IN TEAM_DICT
 		add_team_name(event, home_name, away_name, linking_data)
@@ -199,12 +159,11 @@ def check_index(event,home_name,away_name,home_index,away_index,linking_data):
 			away_name=linking_data.obs_events.iloc[user_input-1]["away_team"]
 			home_index = linking_data.obs_events["home_team"].loc[lambda x: x == home_name].index
 			away_index = linking_data.obs_events["away_team"].loc[lambda x: x == away_name].index
-			print("It will be linked:   %s-%s and %s-%s"%(event["home_team"],home_name,event["away_team"],away_name))
+			#print("It will be linked:   %s-%s and %s-%s"%(event["home_team"],home_name,event["away_team"],away_name))
 			add_team_name(event, home_name, away_name, linking_data)
 			slice = slicing(event, home_index, home_name, away_name, linking_data)
 			return slice
 		#raise ValueError("The Program didn't find an unique correlation between pokerstar and betfair subdataframe\ndate : ", linking_data.current_date," league : ", linking_data.current_competition)
-
 
 def link_single_event(event,linking_data):
 	#FIRST CHECK IF THE TEAM ON THE EVENT ALREADY EXIST IN TEAM DICT
@@ -233,7 +192,6 @@ def link_single_event(event,linking_data):
 		slice = check_index(event,home_name, away_name, home_index, away_index,linking_data)      #BISOGNA MODIFICARE, SCRIVE NEL TEAM_DICT ANCHE SE NON SERVE
 	return slice
 
-
 def link_date_subdataframe(linking_data):
 	#Link team names over date subdataframe
 	ref_events=linking_data.ref_events
@@ -243,10 +201,8 @@ def link_date_subdataframe(linking_data):
 		slice = link_single_event(event, linking_data)
 		#ADD pd.concat WITH final_database
 		linking_data.final_dataframe = pd.concat([linking_data.final_dataframe, slice], ignore_index=True)
-		print("------------------------------------\nFinal Dataframe:")
-		print(linking_data.final_dataframe)
-
-
+		#print("------------------------------------\nFinal Dataframe:")
+		#print(linking_data.final_dataframe)
 
 #----------------------------------------------------------------------
 #CREATE CLASS OBJECT TO BEEN USED AS MEMEORY FOR ALL THE PARAMETERS NEEDED
@@ -258,7 +214,6 @@ class Dataframes():
 	def __init__(self,tmp_ps,tmp_bf):
 		self.tmp_ps=tmp_ps
 		self.tmp_bf=tmp_bf
-
 
 def empty_dataframe():
 	dataframe = pd.DataFrame(columns=['league', 'home_team', 'away_team', 'date', 'selection', 'odd', 'lay_price', 'lay_size'])
@@ -282,16 +237,16 @@ def extract_unique_events(tmp_betfair,tmp_poker,date_1):
 	# SUBDATAFRAMES FOR THE DATE
 	events_bf = tmp_betfair.loc[(tmp_betfair["date"] == date_1, ["home_team", "away_team"])].value_counts()
 	events_bf = events_bf.keys().to_frame(index=False)  # PANDAS SERIES to DATAFRAME
-	print("----------------------")
-	print("EVENTS ON THIS SPECIFIC DATETIME : ", date_1)
-	print("betfair sub_dataframe:")
-	print(events_bf)
+	#print("----------------------")
+	#print("EVENTS ON THIS SPECIFIC DATETIME : ", date_1)
+	#print("betfair sub_dataframe:")
+	#print(events_bf)
 	events_ps = tmp_poker.loc[(tmp_poker["date"] == date_1, ["home_team", "away_team"])].value_counts()
 	events_ps = events_ps.keys().to_frame(index=False)  # PANDAS SERIES to DATAFRAME
-	print("--------")
-	print("pokerstar sub_dataframe:")
-	print(events_ps)
-	print("---------------------")
+	#print("--------")
+	#print("pokerstar sub_dataframe:")
+	#print(events_ps)
+	#print("---------------------")
 	# WE USE THE SHORTEST DATAFRAME AS REFERENCE AND LOOP OVER THE OBSERVED DATAFRAME LINKING THE NAME OF TEAMS
 	#
 	# FIRST THE MOST COMMON CASE
@@ -306,14 +261,14 @@ def extract_unique_events(tmp_betfair,tmp_poker,date_1):
 		IS_BETFAIR_SHORTER = False
 		ref_events = events_ps
 		obs_events = events_bf
-	print("betfair_len: ", len_bf, "  pokerstar_len: ", len_ps, "  IS_BETFAIR_SHORT: ", IS_BETFAIR_SHORTER)
+	#print("betfair_len: ", len_bf, "  pokerstar_len: ", len_ps, "  IS_BETFAIR_SHORT: ", IS_BETFAIR_SHORTER)
 	return ref_events,obs_events,IS_BETFAIR_SHORTER
 
 def extract_dates(merged_dataframe,tmp_betfair,tmp_poker,competition,dict_teams,dict_team_filename):
 	# DATES LOOP
 	dates = tmp_betfair["date"].unique()
 	for date in tmp_betfair["date"].unique():
-		print("first date: ", date)
+		#print("first date: ", date)
 		ref_events, obs_events, IS_BETFAIR_SHORTER = extract_unique_events(tmp_betfair, tmp_poker, date)
 		linking_data = LinkingVariables(date, competition, tmp_poker, tmp_betfair, ref_events, obs_events, dict_teams, dict_team_filename, IS_BETFAIR_SHORTER)
 		link_date_subdataframe(linking_data)
@@ -326,22 +281,50 @@ def extract_dates(merged_dataframe,tmp_betfair,tmp_poker,competition,dict_teams,
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------
 def extract_all_competitions(merged_dataframe,data_pokerstar,data_betfair,dict_teams, dict_team_filename):
 	for comp in data_betfair["league"].unique():
-		print("##################################################################################")
-		print("COMPETIZIONE : %s"% comp)
+		#print("##################################################################################")
+		#print("COMPETIZIONE : %s"% comp)
 		tmp_poker = data_pokerstar[data_pokerstar["league"] == comp]
 		tmp_betfair = data_betfair[data_betfair["league"] == comp]
 		dates_dataframe = extract_dates(merged_dataframe,tmp_betfair, tmp_poker, comp, dict_teams, dict_team_filename)
 		merged_dataframe = pd.concat([merged_dataframe, dates_dataframe], ignore_index=True)
 	return merged_dataframe
-merged_dataframe=empty_dataframe()
-merged_dataframe = extract_all_competitions(merged_dataframe,data_pokerstar,data_betfair,dict_teams,dict_team_filename)
-print(merged_dataframe)
 
-#ADD column rating
-commission=5
+def merge_dataframe(data_pokerstar,data_betfair,dict_teams,dict_team_filename,commission):
+	final_dataframe=empty_dataframe()
+	final_dataframe=extract_all_competitions(final_dataframe,data_pokerstar,data_betfair,dict_teams,dict_team_filename)
+	#FEW CLEANUPS OF THE DATAFRAME
+	commission = commission / 100
+	final_dataframe["rating"] = final_dataframe["odd"] * (1 - (1 / (final_dataframe["lay_price"] - commission)) * (final_dataframe["lay_price"] - 1))
+	final_dataframe.sort_values("rating", ascending=False, inplace=True, ignore_index=True)
+	final_dataframe = final_dataframe.drop_duplicates()
+	final_dataframe.reset_index(drop=True, inplace=True)
+	return final_dataframe
 
-commission=commission/100
-merged_dataframe["rating"]=merged_dataframe["odd"]*(1-(1/(merged_dataframe["lay_price"]-commission))*(merged_dataframe["lay_price"]-1))
-merged_dataframe.sort_values("rating",ascending=False,inplace=True,ignore_index=True)
-merged_dataframe= merged_dataframe.drop_duplicates()
-print(merged_dataframe)
+
+
+
+
+if __name__ == '__main__':
+	# START OF THE PROGRAM
+	# ONLY FOR DEBUG, NO NEED TO SAVE IN A FILE THE DATAFRAMES------------------------------------------------------------------------------------------------------------->
+	pokerstar_save_filename = "pokerstar.csv"
+	competitions_save_filename = "competitions.json"
+	betfair_save_filename = "betfair.csv"
+	non_interactive_login_url = 'https://identitysso-cert.betfair.it/api/certlogin'  # Just for get the session token SSOID on the italian website
+	certificates = ('certificates/betfair_api.crt',
+					'certificates/betfair_api.key')  # local position of my XRC certificates and secret key
+	print(betfair.get_ssoid(betfair.usr, betfair.psw, betfair.ap_key, certificates, non_interactive_login_url))
+	print(betfair.ap_key)
+	# UPDATE THE CSV    <------------------------------------------------------------------ MODIFY IN THE FINAL VERSION
+	# IT'S ONLY READ THE EXISTING CSV AND UPDATE ONLY IF IT DOESN'T EXIST THE FILE
+	data_pokerstar, data_betfair, competitions = update_dataframes(pokerstar_save_filename, competitions_save_filename,betfair_save_filename)
+	# ONLY DEBUG---------------------------------------------------------------------------------------------------------------------------------------------------------->
+	# CREATE DICTIONARY TO STORE TEAM_NAME FORMAT BETWEEN THE 2 DATAFRAMES
+	dict_team_filename = 'dict_teams.json'
+	dict_teams = initialize_dict_teams(dict_team_filename)
+	# PRUNING DATAFRAME TO HAVE THE SAME NUMBER OF LEAGUE AND DATES
+	data_pokerstar, data_betfair = prune_dataframes(data_pokerstar, data_betfair)
+	dataframe = merge_dataframe(data_pokerstar, data_betfair, dict_teams, dict_team_filename, 5)
+	save_pandas(dataframe,"oddsmatcher.csv")
+	print(dataframe.loc[dataframe.rating>=0.8])
+
