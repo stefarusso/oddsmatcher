@@ -16,13 +16,22 @@ def get_ssoid(usr,psw,ap_key,certificates,url):
     payload = 'username=' + usr + '&password=' + psw
     headers = {'X-Application': ap_key, 'Content-Type': 'application/x-www-form-urlencoded'}
     response = requests.post(url, data=payload,cert=certificates,headers=headers)
+    print(response.text)
+
+    if response.status_code == 200:
+        response_json = response.json()
+        if response_json['loginStatus'] == 'SUCCESS':
+            sessontoken = response_json['sessionToken']
+            return response['sessionToken']
+        else:
+            raise Exception('Session Token Request failed. login status betfair API = ' + str(response_json['loginStatus']) + '\nall the return codes are available here https://docs.developer.betfair.com/display/1smk3cen4v3lu3yomq5qye0ni/Non-Interactive+%28bot%29+login')
+    else:
+        raise Exception('Session Token Request failed. ERROR CODE : ' + str(response.status_code))
+
     response=response.json()
     if response['loginStatus'] == 'SUCCESS':
         sessontoken = response['sessionToken']
-    else:
-        print('Houston we have a problem!!!')
-        print('login status betfair API = ' + resp_json['loginStatus'])
-        print('all the return codes are available here https://docs.developer.betfair.com/display/1smk3cen4v3lu3yomq5qye0ni/Non-Interactive+%28bot%29+login')
+
     return response['sessionToken']
 
 
